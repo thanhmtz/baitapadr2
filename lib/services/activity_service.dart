@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:pedometer/pedometer.dart';
-import 'package:geolocator/geolocator.dart';
 
 class ActivityData {
   final int steps;
@@ -94,7 +93,6 @@ class ActivityService {
 
   void _onStepCountError(error) {
     _isPedometerAvailable = false;
-    _startAccelerometerTracking();
   }
 
   
@@ -145,7 +143,6 @@ class ActivityService {
     _durationMinutes = 0;
     
     if (!_isPedometerAvailable) {
-      _startAccelerometerTracking();
     }
 
     _activityTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
@@ -160,26 +157,7 @@ class ActivityService {
     _activityTimer = null;
   }
 
-  Future<Position> getCurrentPosition() async {
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return null;
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) return null;
-      }
-
-      if (permission == LocationPermission.deniedForever) return null;
-
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-    } catch (e) {
-      return null;
-    }
-  }
+  
 
   ActivityData getCurrentData() {
     return ActivityData(
