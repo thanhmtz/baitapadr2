@@ -1,0 +1,42 @@
+[
+    {
+        "name": "Viên Belladonna",
+        "dosage": "Mỗi lần 10–30mg, ngày 30–90mg; liều tối đa: mỗi lần 50mg, một ngày 150mg.",
+        "usage": "Uống."
+    },
+    {
+        "name": "Paracetamol",
+        "dosage": "Mỗi lần 500–1000mg, mỗi 4–6 giờ; tối đa 4000mg/ngày.",
+        "usage": "Uống sau khi ăn."
+    },
+    {
+        "name": "Amoxicillin",
+        "dosage": "Mỗi lần 250–500mg, ngày 3 lần.",
+        "usage": "Uống, có thể trước hoặc sau ăn."
+    },
+    {
+        "name": "Ibuprofen",
+        "dosage": "Mỗi lần 200–400mg, mỗi 6–8 giờ; tối đa 1200mg/ngày.",
+        "usage": "Uống sau ăn để tránh đau dạ dày."
+    },
+    {
+        "name": "Vitamin C",
+        "dosage": "500–1000mg mỗi ngày.",
+        "usage": "Uống sau bữa ăn."
+    },
+    {
+        "name": "Metformin",
+        "dosage": "Mỗi lần 500mg, ngày 2–3 lần.",
+        "usage": "Uống cùng bữa ăn."
+    },
+    {
+        "name": "Aspirin",
+        "dosage": "75–325mg mỗi ngày.",
+        "usage": "Uống sau ăn."
+    },
+    {
+        "name": "Loratadine",
+        "dosage": "10mg mỗi ngày.",
+        "usage": "Uống, không phụ thuộc bữa ăn."
+    }
+]
