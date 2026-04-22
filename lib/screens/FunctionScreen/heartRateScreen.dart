@@ -1,164 +1,204 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:camera/camera.dart';
-import 'package:fl_chart/fl_chart.dart';
-import '../../components/resusableCard.dart';
-import '../../components/buttonButton.dart';
-import '../../components/constants.dart';
-import '../../db/hr_databaseProvider.dart';
-import '../../models/hrDBModel.dart';
-import '../../localization/appLocalization.dart';
-import '../../services/heart_rate_service.dart';
-import '../ResultScreen/hrResultScreen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:meta/meta.dart';
 
-class HeartRate extends StatefulWidget {
+import '../../services/heart_rate_service.dart';
+import '../ResultScreen/hrResultScreen.dart';
+
+// ─── Colour tokens ───────────────────────────────────────────────────────────
+const Color _kBgDark     = Color(0xFF5A0000);
+const Color _kBgMid      = Color(0xFF8B0000);
+const Color _kBgInner    = Color(0xFFB00000);
+const Color _kWhite      = Colors.white;
+const Color _kWhite70    = Color(0xB3FFFFFF);
+const Color _kProgressBg = Color(0x33FFFFFF);
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class HeartRateScreen extends StatefulWidget {
   @override
-  _HeartRateState createState() => _HeartRateState();
+  _HeartRateScreenState createState() => _HeartRateScreenState();
 }
 
-class _HeartRateState extends State<HeartRate> {
+class _HeartRateScreenState extends State<HeartRateScreen>
+    with TickerProviderStateMixin {
+
+  // ── Services / camera ─────────────────────────────────
   final HeartRateService _heartRateService = HeartRateService();
-
   CameraController _cameraController;
-  List<CameraDescription> _cameras;
+  List<CameraDescription> _cameras = [];
   bool _isCameraInitialized = false;
-  bool _hasPermission = false;
+  bool _isFlashOn = false;
 
+  // ── Measurement state ─────────────────────────────────
   HeartRateMeasurementState _state = HeartRateMeasurementState.idle;
-  int _measuredHR = 0;
+  int          _measuredHR    = 0;
   List<double> _displayValues = [];
-  Timer _measurementTimer;
-  int _currentSeconds = 0;
-  String _errorMessage = '';
-  bool _isDisposed = false;
-  bool _isStreaming = false;
-  bool _isStopping = false;
+  Timer        _measurementTimer;
+  int          _currentMs    = 0;
+  String       _errorMessage = '';
+  bool         _isDisposed   = false;
+  bool         _isStreaming  = false;
+  bool         _isStopping   = false;
+  bool         _manualStart  = false;
 
+  // ── Animations ────────────────────────────────────────
+  AnimationController _heartBeatController;
+  Animation<double>   _heartBeatAnim;
+  AnimationController _ecgController;
+  Animation<double>   _ecgAnim;
+
+  // ── Insight cycling ───────────────────────────────────
+  static const List<String> _insights = [
+    'Nhịp tim trung bình khi nghỉ ngơi là 60–100 nhịp/phút.',
+    'Tim đập khoảng 100,000 lần mỗi ngày.',
+    'Tín hiệu điện tim truyền nhanh hơn tín hiệu thần kinh.',
+    'Vận động đều đặn giúp giảm nhịp tim khi nghỉ ngơi.',
+    'Nhịp tim thấp hơn thường là dấu hiệu tim khỏe mạnh hơn.',
+  ];
+  int   _insightIndex = 0;
+  Timer _insightTimer;
+
+  // ─────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
+    _initAnimations();
     _initializeCamera();
+    _startInsightCycle();
   }
 
-  // ─── Camera Init ────────────────────────────────────────────────────────────
+  void _initAnimations() {
+    _heartBeatController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _heartBeatAnim = TweenSequence<double>(
+      <TweenSequenceItem<double>>[
+        TweenSequenceItem<double>(
+          tween: Tween<double>(begin: 1.0, end: 1.25),
+          weight: 30,
+        ),
+        TweenSequenceItem<double>(
+          tween: Tween<double>(begin: 1.25, end: 1.0),
+          weight: 70,
+        ),
+      ],
+    ).animate(CurvedAnimation(
+      parent: _heartBeatController,
+      curve: Curves.easeOut,
+    ));
+
+    _ecgController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat();
+    _ecgAnim = Tween<double>(begin: 0.0, end: 1.0).animate(_ecgController);
+  }
+
+  void _startInsightCycle() {
+    _insightTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!_isDisposed && mounted) {
+        setState(() =>
+        _insightIndex = (_insightIndex + 1) % _insights.length);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _measurementTimer?.cancel();
+    _insightTimer?.cancel();
+    _heartBeatController.dispose();
+    _ecgController.dispose();
+    _isStreaming = false;
+    _turnOffFlash();
+
+    final CameraController ctrl = _cameraController;
+    _cameraController = null;
+    if (ctrl != null && ctrl.value.isInitialized) {
+      try {
+        if (ctrl.value.isStreamingImages) ctrl.stopImageStream();
+      } catch (_) {}
+      ctrl.dispose();
+    }
+    super.dispose();
+  }
+
+  // ── Camera ────────────────────────────────────────────
 
   Future<void> _initializeCamera() async {
     if (!mounted) return;
-    setState(() {
-      _state = HeartRateMeasurementState.initializing;
-    });
-
     try {
       _cameras = await availableCameras();
-
-      CameraDescription backCamera;
-      for (var camera in _cameras) {
-        if (camera.lensDirection == CameraLensDirection.back) {
-          backCamera = camera;
+      CameraDescription back;
+      for (final CameraDescription c in _cameras) {
+        if (c.lensDirection == CameraLensDirection.back) {
+          back = c;
           break;
         }
       }
-      backCamera ??= _cameras.isNotEmpty ? _cameras[0] : null;
-
-      if (backCamera == null) {
-        throw HeartRateException('No camera available', 'NO_CAMERA');
-      }
+      if (back == null && _cameras.isNotEmpty) back = _cameras[0];
+      if (back == null) throw Exception('No camera available');
 
       _cameraController = CameraController(
-        backCamera,
+        back,
         ResolutionPreset.low,
         enableAudio: false,
       );
-
       await _cameraController.initialize();
+      await _cameraController.setFlashMode(FlashMode.torch);
 
       if (mounted && !_isDisposed) {
         setState(() {
           _isCameraInitialized = true;
-          _hasPermission = true;
+          _isFlashOn = true;
           _state = HeartRateMeasurementState.waitingForFinger;
         });
       }
     } catch (e) {
       if (!mounted || _isDisposed) return;
-      if (e is CameraException) {
-        if (e.code == 'CameraAccessDenied') {
-          _handleCameraError(
-              HeartRateException('Camera permission denied', 'PERMISSION_DENIED'));
-        } else {
-          _handleCameraError(HeartRateException(
-              e.description ?? 'Camera error', 'CAMERA_ERROR'));
-        }
-      } else if (e is HeartRateException) {
-        _handleCameraError(e);
-      } else {
-        setState(() {
-          _state = HeartRateMeasurementState.error;
-          _errorMessage = e.toString();
-        });
-      }
+      setState(() {
+        _state = HeartRateMeasurementState.error;
+        _errorMessage = e.toString();
+      });
     }
   }
 
-  void _handleCameraError(HeartRateException e) {
-    if (!mounted || _isDisposed) return;
-    setState(() {
-      _state = HeartRateMeasurementState.error;
-      if (e.code == 'PERMISSION_DENIED') {
-        _errorMessage = 'Camera permission denied';
-      } else if (e.code == 'NO_CAMERA') {
-        _errorMessage = 'No camera available';
-      } else {
-        _errorMessage = 'Camera error: ${e.message}';
+  Future<void> _turnOffFlash() async {
+    try {
+      if (_cameraController != null &&
+          _cameraController.value.isInitialized) {
+        await _cameraController.setFlashMode(FlashMode.off);
       }
-    });
+    } catch (_) {}
   }
 
-  // ─── Lifecycle ───────────────────────────────────────────────────────────────
+  // ── Measurement ──────────────────────────────────────
 
-  @override
-  void dispose() {
-    _isDisposed = true;
-
-    _measurementTimer?.cancel();
-    _measurementTimer = null;
-
-    // Synchronously mark streaming as stopped so in-flight callbacks bail out
-    _isStreaming = false;
-
-    if (_cameraController != null) {
-      final ctrl = _cameraController;
-      _cameraController = null;
-
-      if (ctrl.value.isInitialized) {
-        try {
-          if (ctrl.value.isStreamingImages) {
-            ctrl.stopImageStream();
-          }
-        } catch (_) {}
-        ctrl.dispose();
-      }
-    }
-
-    super.dispose();
+  void _startMeasurementManual() {
+    _manualStart = true;
+    _startMeasurement();
   }
-
-  // ─── Measurement Control ─────────────────────────────────────────────────────
 
   void _startMeasurement() {
     if (!_isCameraInitialized) return;
-    if (_cameraController == null || !_cameraController.value.isInitialized) return;
+    if (_cameraController == null || !_cameraController.value.isInitialized)
+      return;
     if (_isStreaming || _isStopping) return;
 
     _heartRateService.reset();
     _displayValues = [];
-    _measuredHR = 0;
-    _currentSeconds = 0;
-    _errorMessage = '';
+    _measuredHR    = 0;
+    _currentMs     = 0;
+    _errorMessage  = '';
 
-    // Set _isStreaming BEFORE calling startImageStream to block re-entry
+    _heartBeatController.repeat();
+
     setState(() {
       _isStreaming = true;
       _state = HeartRateMeasurementState.measuring;
@@ -167,56 +207,32 @@ class _HeartRateState extends State<HeartRate> {
     _cameraController.startImageStream((CameraImage image) {
       if (_isDisposed || !_isStreaming) return;
       if (_state != HeartRateMeasurementState.measuring) return;
-
-      final int currentTime = DateTime.now().millisecondsSinceEpoch;
-      if (!_heartRateService.shouldProcessFrame(currentTime)) return;
-
+      final int now = DateTime.now().millisecondsSinceEpoch;
+      if (!_heartRateService.shouldProcessFrame(now)) return;
       _processImage(image);
     }).catchError((Object e) {
       if (!_isDisposed && mounted) {
         setState(() {
           _isStreaming = false;
           _state = HeartRateMeasurementState.error;
-          _errorMessage = 'Camera stream error: ${e.toString()}';
+          _errorMessage = 'Camera error: $e';
         });
       }
     });
 
     _measurementTimer?.cancel();
-    _measurementTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_isDisposed || !mounted) {
-        timer.cancel();
-        return;
-      }
-      if (_state != HeartRateMeasurementState.measuring) {
-        timer.cancel();
-        return;
-      }
-
-      _currentSeconds++;
-
-      if (_currentSeconds >= 20) {
-        timer.cancel();
-        _completeMeasurement();
-      } else {
-        setState(() {});
-      }
-    });
-  }
-
-  void _stopMeasurement() {
-    _measurementTimer?.cancel();
-    _measurementTimer = null;
-
-    if (mounted && !_isDisposed) {
-      setState(() {
-        _state = HeartRateMeasurementState.waitingForFinger;
-        _currentSeconds = 0;
-        _displayValues = [];
-      });
-    }
-
-    _safeStopStream();
+    _measurementTimer =
+        Timer.periodic(const Duration(milliseconds: 100), (Timer t) {
+          if (_isDisposed || !mounted) { t.cancel(); return; }
+          if (_state != HeartRateMeasurementState.measuring) { t.cancel(); return; }
+          _currentMs += 100;
+          if (_currentMs >= 20000) {
+            t.cancel();
+            _completeMeasurement();
+          } else {
+            setState(() {});
+          }
+        });
   }
 
   Future<void> _safeStopStream() async {
@@ -225,43 +241,31 @@ class _HeartRateState extends State<HeartRate> {
       _isStreaming = false;
       return;
     }
-
     _isStopping = true;
-
+    _heartBeatController.stop();
+    _heartBeatController.reset();
     try {
-      // Give any in-flight frame callbacks time to finish
       await Future.delayed(const Duration(milliseconds: 100));
-
       if (!_isDisposed &&
           _cameraController != null &&
           _cameraController.value.isInitialized &&
           _cameraController.value.isStreamingImages) {
         await _cameraController.stopImageStream();
       }
-    } catch (e) {
-      debugPrint('stopImageStream error (safe to ignore): $e');
-    } finally {
-      _isStreaming = false;
-      _isStopping = false;
-    }
+    } catch (_) {}
+    _isStreaming = false;
+    _isStopping  = false;
   }
 
   Future<void> _completeMeasurement() async {
     if (_isDisposed) return;
-
-    // Stop stream first, THEN process result
     await _safeStopStream();
-
+    await _turnOffFlash();
     if (_isDisposed || !mounted) return;
+    setState(() => _state = HeartRateMeasurementState.processing);
 
-    setState(() {
-      _state = HeartRateMeasurementState.processing;
-    });
-
-    final result = _heartRateService.calculateHeartRate();
-
+    final HeartRateResult result = _heartRateService.calculateHeartRate();
     if (_isDisposed || !mounted) return;
-
     setState(() {
       if (result.isValid) {
         _measuredHR = result.bpm;
@@ -273,199 +277,238 @@ class _HeartRateState extends State<HeartRate> {
     });
   }
 
-  // ─── Image Processing ────────────────────────────────────────────────────────
-
   void _processImage(CameraImage image) {
-    if (_isDisposed) return;
-    if (image.planes.isEmpty) return;
+    if (_isDisposed || image.planes.isEmpty) return;
+    final Plane plane = image.planes[0];
+    final int   bpr   = plane.bytesPerRow;
+    final int   h     = image.height;
+    final       bytes = plane.bytes;
 
-    final plane = image.planes[0];
-    final int totalPixels = plane.bytesPerRow * image.height;
-    final List<int> pixelData = plane.bytes;
+    double gSum = 0, rSum = 0;
+    int    count = 0;
+    final int cy  = h ~/ 2;
+    final int reg = h ~/ 3;
+    final int sy  = cy - reg;
+    final int ey  = cy + reg;
 
-    int redSum = 0;
-    int pixelCount = 0;
-
-    for (int i = 0; i < totalPixels; i += 4) {
-      if (i + 2 < pixelData.length) {
-        redSum += pixelData[i + 2];
-        pixelCount++;
+    for (int y = sy; y < ey; y++) {
+      for (int x = 0; x < bpr; x += 4) {
+        final int idx = y * bpr + x;
+        if (idx + 2 < bytes.length) {
+          rSum += bytes[idx];
+          gSum += bytes[idx + 1];
+          count++;
+        }
       }
     }
+    if (count == 0) return;
 
-    if (pixelCount == 0) return;
+    final double avgG = gSum / count;
+    final double avgR = rSum / count;
 
-    final double avgRed = redSum / pixelCount;
-    _heartRateService.addSample(avgRed);
+    // Gọi addSample với 1 tham số (phù hợp HeartRateService cơ bản)
+    // Nếu service của bạn có thêm tham số, hãy thêm vào đây
+    _heartRateService.addSample(avgR * 0.6 + avgG * 0.4);
 
-    if (!_heartRateService.isFingerDetected()) {
-      if (_state == HeartRateMeasurementState.measuring &&
-          !_isDisposed &&
-          mounted) {
-        setState(() {
-          _state = HeartRateMeasurementState.waitingForFinger;
-        });
+    if (!_manualStart && !_heartRateService.isFingerDetected()) {
+      if (_state == HeartRateMeasurementState.measuring && mounted) {
+        setState(
+                () => _state = HeartRateMeasurementState.waitingForFinger);
       }
     } else if (_state == HeartRateMeasurementState.waitingForFinger &&
-        !_isDisposed &&
         mounted) {
-      setState(() {
-        _state = HeartRateMeasurementState.measuring;
-      });
+      setState(() => _state = HeartRateMeasurementState.measuring);
     }
 
-    final List<double> buffer = _heartRateService.getSignalBuffer();
-    if (!_isDisposed && buffer.length > 1 && mounted) {
+    final List<double> buf = _heartRateService.getSignalBuffer();
+    if (buf.length > 1 && mounted) {
       setState(() {
         _displayValues =
-            buffer.sublist(buffer.length > 50 ? buffer.length - 50 : 0);
+            buf.sublist(buf.length > 80 ? buf.length - 80 : 0);
       });
     }
   }
 
-  // ─── Save ────────────────────────────────────────────────────────────────────
+  int get _progressPercent =>
+      ((_currentMs / 20000) * 100).clamp(0, 100).round();
 
-  Future<void> _saveHeartRate() async {
+  // ── Save ─────────────────────────────────────────────
+
+  void _saveHeartRate() async {
     if (_measuredHR < 30 || _measuredHR > 220) return;
-
-    final bool confirmed = await _showSaveConfirmation();
-    if (!confirmed) return;
-
-    final date = DateTime.now().toLocal();
-    final String time =
-        "${date.year.toString()}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} "
-        "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-
-    final HeartRateDB heartRateDB = HeartRateDB(hr: _measuredHR, date: time);
-    await HeartRateDataBaseProvider.db.insert(heartRateDB);
-
-    if (mounted && !_isDisposed) {
-      Navigator.push(
-        context,
-        CupertinoPageRoute(
-          builder: (context) => HRResultScreen(hr: _measuredHR),
-        ),
-      );
-    }
-  }
-
-  Future<bool> _showSaveConfirmation() async {
-    return await showCupertinoDialog<bool>(
+    final bool ok = await showCupertinoDialog<bool>(
       context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text(
-            AppLocalization.of(context).translate('save_record') ??
-                'Save Heart Rate'),
-        content: Text('Save measurement of $_measuredHR BPM?'),
+      builder: (_) => CupertinoAlertDialog(
+        title: const Text('Lưu kết quả'),
+        content: Text('Lưu kết quả $_measuredHR BPM?'),
         actions: <Widget>[
           CupertinoDialogAction(
-            child: Text(
-                AppLocalization.of(context).translate('cancel') ??
-                    'Cancel'),
-            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Hủy'),
+            onPressed: () => Navigator.pop(context, false),
           ),
           CupertinoDialogAction(
             isDefaultAction: true,
-            child: Text(
-                AppLocalization.of(context).translate('save') ?? 'Save'),
-            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Lưu'),
+            onPressed: () => Navigator.pop(context, true),
           ),
         ],
       ),
     ) ??
         false;
+    if (ok && mounted) {
+      Navigator.push(
+        context,
+        CupertinoPageRoute(
+          builder: (_) => HRResultScreen(hr: _measuredHR),
+        ),
+      );
+    }
   }
 
-  // ─── Build ───────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────
+  // BUILD
+  // ─────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1C1C1E),
-        elevation: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const Icon(Icons.favorite, color: CupertinoColors.systemRed, size: 24),
-            const SizedBox(width: 8),
-            Text(
-              AppLocalization.of(context).translate('heart_rate_monitor') ??
-                  'Heart Rate Monitor',
-              style: const TextStyle(color: CupertinoColors.white, fontSize: 18),
+      backgroundColor: _kBgDark,
+      body: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          _buildBackground(),
+          if (_isCameraInitialized && _cameraController != null)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0,
+                child: CameraPreview(_cameraController),
+              ),
             ),
-          ],
-        ),
-        centerTitle: true,
+          SafeArea(child: _buildUI()),
+        ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: <Widget>[
-            _buildFingerGuide(),
-            _buildCameraPreview(),
-            _buildBPMDisplay(),
-            _buildPPGGraph(),
-            _buildControlButtons(),
-          ],
+    );
+  }
+
+  Widget _buildBackground() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -0.1),
+          radius: 0.9,
+          colors: <Color>[_kBgInner, _kBgMid, _kBgDark],
+          stops: <double>[0.0, 0.45, 1.0],
         ),
       ),
     );
   }
 
-  // ─── Widgets ─────────────────────────────────────────────────────────────────
+  Widget _buildUI() {
+    return Column(
+      children: <Widget>[
+        _buildTopBar(),
+        Expanded(child: _buildBody()),
+      ],
+    );
+  }
 
-  Widget _buildFingerGuide() {
-    if (_state == HeartRateMeasurementState.measuring ||
-        _state == HeartRateMeasurementState.completed) {
-      return const SizedBox.shrink();
-    }
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
-        borderRadius: BorderRadius.circular(16),
-      ),
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: <Widget>[
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemRed.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: const Icon(
-              Icons.touch_app,
-              color: CupertinoColors.systemRed,
-              size: 32,
-            ),
+          _CircleBtn(
+            icon: Icons.close,
+            onTap: () async {
+              await _safeStopStream();
+              await _turnOffFlash();
+              if (mounted) Navigator.pop(context);
+            },
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  AppLocalization.of(context).translate('place_finger') ??
-                      'Place your finger on the camera',
-                  style: const TextStyle(
-                    color: CupertinoColors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+          const Spacer(),
+          if (_isFlashOn)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const <Widget>[
+                  Icon(Icons.flash_on, color: Colors.amber, size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    'Flash',
+                    style: TextStyle(color: Colors.amber, fontSize: 13),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  AppLocalization.of(context).translate('keep_steady') ??
-                      'Keep your finger steady for 20 seconds',
-                  style: const TextStyle(
-                    color: CupertinoColors.systemGrey,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    switch (_state) {
+      case HeartRateMeasurementState.waitingForFinger:
+        return _buildWaiting();
+      case HeartRateMeasurementState.measuring:
+      case HeartRateMeasurementState.processing:
+        return _buildMeasuring();
+      case HeartRateMeasurementState.completed:
+        return _buildResult();
+      case HeartRateMeasurementState.error:
+        return _buildError();
+      default:
+        return _buildWaiting();
+    }
+  }
+
+  // ── Waiting ──────────────────────────────────────────
+
+  Widget _buildWaiting() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          const Icon(Icons.touch_app, color: _kWhite, size: 72),
+          const SizedBox(height: 28),
+          const Text(
+            'Đặt ngón tay lên camera',
+            style: TextStyle(
+              color: _kWhite,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Phủ kín camera sau và đèn flash\nbằng ngón tay trỏ của bạn',
+            style: TextStyle(
+              color: _kWhite.withOpacity(0.7),
+              fontSize: 15,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 48),
+          _PillButton(
+            label: 'Bắt đầu đo',
+            onTap: _manualStart ? null : _startMeasurementManual,
+            color: Colors.white,
+            textColor: _kBgDark,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Nhấn nếu camera không nhận ngón tay',
+            style: TextStyle(
+              color: _kWhite.withOpacity(0.4),
+              fontSize: 12,
             ),
           ),
         ],
@@ -473,137 +516,204 @@ class _HeartRateState extends State<HeartRate> {
     );
   }
 
-  Widget _buildCameraPreview() {
-    if (!_isCameraInitialized ||
-        _cameraController == null ||
-        _state == HeartRateMeasurementState.completed) {
-      return const SizedBox.shrink();
-    }
+  // ── Measuring ────────────────────────────────────────
 
-    final bool fingerDetected = _heartRateService.isFingerDetected();
+  Widget _buildMeasuring() {
+    final bool fingerOk    = _heartRateService.isFingerDetected();
+    final int  sampleCount = _heartRateService.sampleCount;
 
-    return Container(
-      height: 100,
-      width: 100,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(
-          color: fingerDetected
-              ? CupertinoColors.systemGreen
-              : CupertinoColors.systemGrey,
-          width: 3,
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(47),
-        child: CameraPreview(_cameraController),
-      ),
+    return Column(
+      children: <Widget>[
+        const SizedBox(height: 12),
+        _buildBpmDisplay(sampleCount, fingerOk),
+        const Spacer(),
+        _buildEcgWave(),
+        const Spacer(),
+        _buildInsight(),
+        const SizedBox(height: 24),
+        _buildProgress(),
+        const SizedBox(height: 32),
+      ],
     );
   }
 
-  Widget _buildBPMDisplay() {
-    Color bpmColor;
-    String bpmStatus;
-
-    switch (_state) {
-      case HeartRateMeasurementState.completed:
-        if (_measuredHR > 0 && _measuredHR < 60) {
-          bpmColor = CupertinoColors.systemBlue;
-          bpmStatus = AppLocalization.of(context).translate('low') ?? 'Low';
-        } else if (_measuredHR >= 60 && _measuredHR <= 100) {
-          bpmColor = CupertinoColors.systemGreen;
-          bpmStatus =
-              AppLocalization.of(context).translate('normal') ?? 'Normal';
-        } else if (_measuredHR > 100 && _measuredHR <= 120) {
-          bpmColor = CupertinoColors.systemOrange;
-          bpmStatus =
-              AppLocalization.of(context).translate('elevated') ?? 'Elevated';
-        } else if (_measuredHR > 120) {
-          bpmColor = CupertinoColors.systemRed;
-          bpmStatus =
-              AppLocalization.of(context).translate('high') ?? 'High';
-        } else {
-          bpmColor = CupertinoColors.systemGrey;
-          bpmStatus = '--';
-        }
-        break;
-      case HeartRateMeasurementState.waitingForFinger:
-        bpmColor = CupertinoColors.systemYellow;
-        bpmStatus =
-            AppLocalization.of(context).translate('place_finger') ??
-                'Place finger';
-        break;
-      case HeartRateMeasurementState.measuring:
-        bpmColor = CupertinoColors.systemRed;
-        bpmStatus =
-            AppLocalization.of(context).translate('measuring') ?? 'Measuring...';
-        break;
-      case HeartRateMeasurementState.processing:
-        bpmColor = CupertinoColors.systemOrange;
-        bpmStatus =
-            AppLocalization.of(context).translate('processing') ?? 'Processing...';
-        break;
-      case HeartRateMeasurementState.error:
-        bpmColor = CupertinoColors.systemRed;
-        bpmStatus = _errorMessage.isNotEmpty ? _errorMessage : 'Error';
-        break;
-      default:
-        bpmColor = CupertinoColors.systemGrey;
-        bpmStatus =
-            AppLocalization.of(context).translate('ready') ?? 'Ready';
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        children: <Widget>[
-          Text(
-            _state == HeartRateMeasurementState.completed
-                ? _measuredHR.toString()
-                : '--',
-            style: TextStyle(
-              fontSize: 80,
-              fontWeight: FontWeight.bold,
-              color: bpmColor,
-            ),
+  Widget _buildBpmDisplay(int sampleCount, bool fingerOk) {
+    return Column(
+      children: <Widget>[
+        AnimatedBuilder(
+          animation: _heartBeatAnim,
+          builder: (BuildContext ctx, Widget child) => Transform.scale(
+            scale: _state == HeartRateMeasurementState.measuring
+                ? _heartBeatAnim.value
+                : 1.0,
+            child: const Icon(Icons.favorite, color: _kWhite, size: 36),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const Text(
-                'BPM',
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: <Widget>[
+            Text(
+              _displayValues.isNotEmpty && fingerOk
+                  ? '${_estimateLiveBpm()}'
+                  : '--',
+              style: const TextStyle(
+                color: _kWhite,
+                fontSize: 88,
+                fontWeight: FontWeight.w800,
+                height: 1.0,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 14, left: 6),
+              child: Text(
+                'bpm',
                 style: TextStyle(
-                  fontSize: 24,
-                  color: CupertinoColors.systemGrey,
+                  color: _kWhite70,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
-              if (_state == HeartRateMeasurementState.measuring) ...[
-                const SizedBox(width: 16),
-                Text(
-                  '${_currentSeconds}s / 20s',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: CupertinoColors.systemGrey,
-                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: fingerOk
+                ? Colors.white.withOpacity(0.15)
+                : Colors.orange.withOpacity(0.25),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: fingerOk
+                  ? Colors.white24
+                  : Colors.orange.withOpacity(0.4),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                fingerOk ? Icons.favorite : Icons.warning_amber_rounded,
+                color: fingerOk ? _kWhite : Colors.orangeAccent,
+                size: 14,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                fingerOk
+                    ? 'Đang đo nhịp tim...'
+                    : 'Đặt ngón tay vào camera',
+                style: TextStyle(
+                  color: fingerOk ? _kWhite : Colors.orangeAccent,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: bpmColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
+        ),
+      ],
+    );
+  }
+
+  int _estimateLiveBpm() {
+    if (_displayValues.length < 20) return 0;
+    final HeartRateResult res = _heartRateService.calculateHeartRate();
+    return res.isValid ? res.bpm : 0;
+  }
+
+  Widget _buildEcgWave() {
+    return SizedBox(
+      height: 100,
+      child: AnimatedBuilder(
+        animation: _ecgAnim,
+        builder: (BuildContext ctx, Widget child) => CustomPaint(
+          painter: _EcgPainter(
+            progress: _ecgAnim.value,
+            signal: _displayValues,
+            isActive: _state == HeartRateMeasurementState.measuring,
+          ),
+          size: Size(MediaQuery.of(context).size.width, 100),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInsight() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 600),
+        child: Text(
+          'Science Insight: ${_insights[_insightIndex]}',
+          key: ValueKey<int>(_insightIndex),
+          style: const TextStyle(
+            color: _kWhite70,
+            fontSize: 15,
+            height: 1.55,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgress() {
+    final double frac        = _progressPercent / 100.0;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double barWidth    = screenWidth - 64;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        children: <Widget>[
+          SizedBox(
+            height: 10,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: <Widget>[
+                Container(
+                  height: 3,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: _kProgressBg,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Container(
+                  height: 3,
+                  width: barWidth * frac.clamp(0.0, 1.0),
+                  decoration: BoxDecoration(
+                    color: _kWhite,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Positioned(
+                  left: (barWidth * frac.clamp(0.0, 1.0) - 5)
+                      .clamp(0.0, barWidth - 10),
+                  child: Container(
+                    width:  10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: _kWhite,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: Text(
-              bpmStatus,
-              style: TextStyle(
-                color: bpmColor,
-                fontWeight: FontWeight.w600,
-              ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            '$_progressPercent%',
+            style: const TextStyle(
+              color: _kWhite,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -611,158 +721,336 @@ class _HeartRateState extends State<HeartRate> {
     );
   }
 
-  Widget _buildPPGGraph() {
-    if (_state != HeartRateMeasurementState.measuring ||
-        _displayValues.isEmpty) {
-      return Container(
-        height: 100,
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1C1C1E),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Center(
-          child: Text(
-            AppLocalization.of(context).translate('ppg_signal') ?? 'PPG Signal',
-            style: const TextStyle(color: CupertinoColors.systemGrey),
-          ),
-        ),
-      );
+  // ── Result ───────────────────────────────────────────
+
+  Widget _buildResult() {
+    String label;
+    Color  labelColor;
+    if (_measuredHR < 60) {
+      label      = 'Nhịp tim thấp';
+      labelColor = Colors.blueAccent;
+    } else if (_measuredHR <= 100) {
+      label      = 'Bình thường';
+      labelColor = Colors.greenAccent;
+    } else {
+      label      = 'Nhịp tim cao';
+      labelColor = Colors.redAccent;
     }
 
-    final List<FlSpot> spots = List.generate(
-      _displayValues.length,
-          (i) => FlSpot(i.toDouble(), _displayValues[i]),
-    );
-
-    return Container(
-      height: 100,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.only(right: 16, top: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(show: false),
-          titlesData: FlTitlesData(show: false),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              colors: [CupertinoColors.systemRed],
-              barWidth: 2,
-              isStrokeCapRound: true,
-              dotData: FlDotData(show: false),
-              belowBarData: BarAreaData(
-                show: true,
-                colors: [CupertinoColors.systemRed.withOpacity(0.2)],
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        const Icon(Icons.favorite, color: _kWhite, size: 48),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: <Widget>[
+            Text(
+              '$_measuredHR',
+              style: const TextStyle(
+                color: _kWhite,
+                fontSize: 96,
+                fontWeight: FontWeight.w800,
+                height: 1,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 14, left: 8),
+              child: Text(
+                'bpm',
+                style: TextStyle(color: _kWhite70, fontSize: 22),
               ),
             ),
           ],
-          lineTouchData: LineTouchData(enabled: false),
         ),
-      ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            color: labelColor.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: labelColor.withOpacity(0.5)),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: labelColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 48),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            _PillButton(
+              icon: Icons.refresh_rounded,
+              label: 'Đo lại',
+              color: Colors.white24,
+              textColor: _kWhite,
+              onTap: () async {
+                await _turnOffFlash();
+                _heartRateService.reset();
+                setState(() {
+                  _state         = HeartRateMeasurementState.waitingForFinger;
+                  _measuredHR    = 0;
+                  _displayValues = [];
+                  _currentMs     = 0;
+                  _manualStart   = false;
+                });
+                await _initializeCamera();
+              },
+            ),
+            const SizedBox(width: 16),
+            _PillButton(
+              icon: Icons.bookmark_rounded,
+              label: 'Lưu',
+              color: Colors.greenAccent.withOpacity(0.25),
+              textColor: Colors.greenAccent,
+              borderColor: Colors.greenAccent.withOpacity(0.5),
+              onTap: _saveHeartRate,
+            ),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _buildControlButtons() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  // ── Error ────────────────────────────────────────────
+
+  Widget _buildError() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          if (_state == HeartRateMeasurementState.measuring)
-            _buildButton(
-              icon: Icons.stop,
-              label: AppLocalization.of(context).translate('stop') ?? 'Stop',
-              color: CupertinoColors.systemRed,
-              onPressed: _stopMeasurement,
-            )
-          else if (_state == HeartRateMeasurementState.completed) ...[
-            _buildButton(
-              icon: Icons.save,
-              label: AppLocalization.of(context).translate('save') ?? 'Save',
-              color: CupertinoColors.systemGreen,
-              onPressed: _saveHeartRate,
+          const Icon(Icons.error_outline, color: _kWhite70, size: 64),
+          const SizedBox(height: 20),
+          Text(
+            _errorMessage.isNotEmpty ? _errorMessage : 'Đã xảy ra lỗi.',
+            style: const TextStyle(
+              color: _kWhite70,
+              fontSize: 16,
+              height: 1.5,
             ),
-            _buildButton(
-              icon: Icons.refresh,
-              label:
-              AppLocalization.of(context).translate('reset') ?? 'Reset',
-              color: CupertinoColors.systemBlue,
-              onPressed: () {
-                _heartRateService.reset();
-                if (mounted) {
-                  setState(() {
-                    _state = HeartRateMeasurementState.waitingForFinger;
-                    _measuredHR = 0;
-                    _displayValues = [];
-                    _currentSeconds = 0;
-                    _errorMessage = '';
-                  });
-                }
-              },
-            ),
-          ] else if (_state == HeartRateMeasurementState.error) ...[
-            _buildButton(
-              icon: Icons.refresh,
-              label:
-              AppLocalization.of(context).translate('retry') ?? 'Retry',
-              color: CupertinoColors.systemOrange,
-              onPressed: () {
-                _heartRateService.reset();
-                if (mounted) {
-                  setState(() {
-                    _state = HeartRateMeasurementState.waitingForFinger;
-                    _measuredHR = 0;
-                    _displayValues = [];
-                    _currentSeconds = 0;
-                    _errorMessage = '';
-                    _isStreaming = false;
-                  });
-                }
-              },
-            ),
-          ] else
-            _buildButton(
-              icon: Icons.play_arrow,
-              label:
-              AppLocalization.of(context).translate('start') ?? 'Start',
-              color: CupertinoColors.systemGreen,
-              onPressed: _isCameraInitialized ? _startMeasurement : null,
-            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 36),
+          _PillButton(
+            label: 'Thử lại',
+            color: Colors.white24,
+            textColor: _kWhite,
+            onTap: () {
+              _heartRateService.reset();
+              setState(() {
+                _state         = HeartRateMeasurementState.waitingForFinger;
+                _measuredHR    = 0;
+                _displayValues = [];
+                _currentMs     = 0;
+                _errorMessage  = '';
+                _manualStart   = false;
+              });
+            },
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildButton({
-    IconData icon,
-    String label,
-    Color color,
-    VoidCallback onPressed,
-  }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// ECG Painter
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EcgPainter extends CustomPainter {
+  final double       progress;
+  final List<double> signal;
+  final bool         isActive;
+
+  // Dart 2.13: dùng @required từ package:meta
+  _EcgPainter({
+    @required this.progress,
+    @required this.signal,
+    @required this.isActive,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint linePaint = Paint()
+      ..color       = Colors.white.withOpacity(0.9)
+      ..strokeWidth = 2.2
+      ..style       = PaintingStyle.stroke
+      ..strokeCap   = StrokeCap.round
+      ..strokeJoin  = StrokeJoin.round;
+
+    final Paint glowPaint = Paint()
+      ..color       = Colors.white.withOpacity(0.18)
+      ..strokeWidth = 6
+      ..style       = PaintingStyle.stroke
+      ..strokeCap   = StrokeCap.round
+      ..maskFilter  = const MaskFilter.blur(BlurStyle.normal, 4);
+
+    final int  n       = signal.length;
+    final bool useReal = n > 10;
+    final Path path     = Path();
+    final Path glowPath = Path();
+
+    if (useReal) {
+      double mn = signal.reduce(min);
+      double mx = signal.reduce(max);
+      if ((mx - mn) < 1e-6) { mn -= 1; mx += 1; }
+      final double norm = mx - mn;
+
+      for (int i = 0; i < n; i++) {
+        final double x = i / (n - 1) * size.width;
+        final double y = size.height -
+            ((signal[i] - mn) / norm) * size.height * 0.8 -
+            size.height * 0.1;
+        if (i == 0) {
+          path.moveTo(x, y);
+          glowPath.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+          glowPath.lineTo(x, y);
+        }
+      }
+    } else {
+      _buildSyntheticEcg(path, glowPath, size);
+    }
+
+    canvas.drawPath(glowPath, glowPaint);
+    canvas.drawPath(path, linePaint);
+
+    if (isActive) {
+      final double scanX    = progress * size.width;
+      final Paint scanPaint = Paint()
+        ..color       = Colors.white.withOpacity(0.5)
+        ..strokeWidth = 2;
+      canvas.drawLine(
+        Offset(scanX, 0),
+        Offset(scanX, size.height),
+        scanPaint,
+      );
+    }
+  }
+
+  void _buildSyntheticEcg(Path path, Path glow, Size size) {
+    const int    pts = 300;
+    final double cy  = size.height / 2;
+    final double amp = size.height * 0.38;
+
+    for (int i = 0; i <= pts; i++) {
+      final double t     = i / pts;
+      final double x     = t * size.width;
+      final double phase = (t * 3) % 1.0;
+      double y = cy;
+
+      if (phase < 0.10) {
+        y = cy - amp * 0.12 * sin(phase / 0.10 * pi);
+      } else if (phase < 0.18) {
+        y = cy + amp * 0.05 * sin((phase - 0.10) / 0.08 * pi);
+      } else if (phase < 0.23) {
+        y = cy - amp * 1.0  * sin((phase - 0.18) / 0.05 * pi);
+      } else if (phase < 0.30) {
+        y = cy + amp * 0.30 * sin((phase - 0.23) / 0.07 * pi);
+      } else if (phase < 0.50) {
+        y = cy - amp * 0.18 * sin((phase - 0.30) / 0.20 * pi);
+      }
+
+      if (i == 0) {
+        path.moveTo(x, y);
+        glow.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+        glow.lineTo(x, y);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _EcgPainter old) =>
+      old.progress != progress ||
+          old.signal   != signal   ||
+          old.isActive != isActive;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared widgets
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CircleBtn extends StatelessWidget {
+  final IconData     icon;
+  final VoidCallback onTap;
+
+  const _CircleBtn({
+    Key key,
+    @required this.icon,
+    this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onPressed,
+      onTap: onTap,
       child: Container(
-        width: 100,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        width:  40,
+        height: 40,
         decoration: BoxDecoration(
-          color: onPressed != null ? color : CupertinoColors.systemGrey,
-          borderRadius: BorderRadius.circular(30),
+          color:  Colors.white.withOpacity(0.15),
+          shape:  BoxShape.circle,
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Icon(icon, color: Colors.white, size: 20),
+      ),
+    );
+  }
+}
+
+class _PillButton extends StatelessWidget {
+  final String       label;
+  final IconData     icon;
+  final Color        color;
+  final Color        textColor;
+  final Color        borderColor;
+  final VoidCallback onTap;
+
+  const _PillButton({
+    Key key,
+    @required this.label,
+    @required this.color,
+    @required this.textColor,
+    this.icon,
+    this.borderColor,
+    this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+        decoration: BoxDecoration(
+          color:        color,
+          borderRadius: BorderRadius.circular(32),
+          border: borderColor != null
+              ? Border.all(color: borderColor)
+              : null,
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(icon, color: CupertinoColors.white),
-            const SizedBox(width: 8),
+            if (icon != null) ...<Widget>[
+              Icon(icon, color: textColor, size: 18),
+              const SizedBox(width: 8),
+            ],
             Text(
               label,
-              style: const TextStyle(
-                color: CupertinoColors.white,
+              style: TextStyle(
+                color:      textColor,
+                fontSize:   16,
                 fontWeight: FontWeight.w600,
               ),
             ),

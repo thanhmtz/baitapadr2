@@ -45,7 +45,7 @@ List<Widget> pageRoutes = [
   BloodSugar(),
   BmiScreen(),
   SleepScreen(),
-  HeartRate(),
+  HeartRateScreen(),
   ActivityScreen(),
 ];
 
