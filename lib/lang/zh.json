@@ -1,5 +1,9 @@
 {
   "tittle": "血压小本",
+  "nutrition_page": "营养",
+  "search_food": "搜索食物",
+  "food_search": "搜索食物",
+  "food_search_hint": "输入食物名称",
   "home_page": "摘要",
   "reminder_page": "提醒用药",
   "function_page": "记录功能",

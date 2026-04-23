@@ -1,138 +1,108 @@
-/* 界面控制器组件，主要控制页面切换效果和下面的选项卡菜单 */
-
-import 'package:bp_notepad/localization/appLocalization.dart';
-import 'package:bp_notepad/screens/reminderScreen.dart';
-import 'package:bp_notepad/screens/historyScreen.dart';
-import 'package:bp_notepad/screens/homeScreen.dart';
-import 'package:bp_notepad/screens/recordScreen.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:bp_notepad/screens/homeScreen.dart';
+import 'package:bp_notepad/screens/addScreen.dart';
+import 'package:bp_notepad/screens/userScreen.dart';
+import 'package:bp_notepad/screens/trackingScreen.dart';
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key}) : super(key: key);
-
+class MainScreen extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _MainScreenState createState() => _MainScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _selectedIndex = 0;
+class _MainScreenState extends State<MainScreen> {
+  int _currentIndex = 0;
 
-  static List<Widget> _widgetOptions = <Widget>[
+  final List<Widget> _screens = [
     HomeScreen(),
-    RecordMeun(),
-    ReminderScreen(),
-    HistoryScreen(),
+    AddScreen(),
+    UserScreen(),
+    TrackingScreen(),
   ];
+
+  void _onTabSelected(int index) {
+    setState(() {
+      if (_currentIndex == 0 && index == 0) {
+        _screens[0] = HomeScreen();
+      }
+      _currentIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoTabScaffold(
-        tabBar: CupertinoTabBar(
-          // backgroundColor:
-          //     CupertinoTheme.of(context).barBackgroundColor.withOpacity(0.8),
-          currentIndex: _selectedIndex,
-          onTap: (value) {
-            setState(() {
-              _selectedIndex = value;
-            });
-          },
-          items: [
-            BottomNavigationBarItem(
-              icon: const Icon(CupertinoIcons.heart_fill),
-              label: AppLocalization.of(context).translate('home_page'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(CupertinoIcons.doc_chart),
-              label: AppLocalization.of(context).translate('function_page'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(CupertinoIcons.alarm),
-              label: AppLocalization.of(context).translate('reminder_page'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(CupertinoIcons.gobackward),
-              label: AppLocalization.of(context).translate('history_page'),
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: CupertinoColors.white,
+          boxShadow: [
+            BoxShadow(
+              color: CupertinoColors.systemGrey.withOpacity(0.15),
+              blurRadius: 20,
+              offset: Offset(0, -5),
             ),
           ],
         ),
-        tabBuilder: (context, i) {
-          return CupertinoPageScaffold(child: _widgetOptions[_selectedIndex]);
-        });
+        child: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(0, CupertinoIcons.house_fill, 'Home'),
+                _buildNavItem(1, CupertinoIcons.add_circled_solid, 'Add'),
+                _buildNavItem(2, CupertinoIcons.person_fill, 'User'),
+                _buildNavItem(3, CupertinoIcons.chart_bar_alt_fill, 'Tracking'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    bool isSelected = _currentIndex == index;
+    
+    return GestureDetector(
+      onTap: () => _onTabSelected(index),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? CupertinoColors.activeGreen.withOpacity(0.15) 
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 23,
+              color: isSelected 
+                  ? CupertinoColors.activeGreen 
+                  : CupertinoColors.systemGrey,
+            ),
+            SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected 
+                    ? CupertinoColors.activeGreen 
+                    : CupertinoColors.systemGrey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
-
-
-// class MyHomePage extends StatefulWidget {
-//   MyHomePage({Key key}) : super(key: key);
-
-//   @override
-//   _MyHomePageState createState() => _MyHomePageState();
-// }
-
-// class _MyHomePageState extends State<MyHomePage> {
-//   int _selectedIndex = 0;
-//   PageController _pageController;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _pageController = PageController();
-//   }
-
-//   @override
-//   void dispose() {
-//     _pageController.dispose();
-//     super.dispose();
-//   }
-
-//   void _onItemTapped(int index) {
-//     setState(() {
-//       _selectedIndex = index;
-//       //using this page controller you can make beautiful animation effects
-//       _pageController.animateToPage(index,
-//           duration: Duration(milliseconds: 350), curve: Curves.easeInOutCubic);
-//     });
-//   }
-
-//   static List<Widget> _widgetOptions = <Widget>[
-//     HomeScreen(),
-//     RecordMeun(),
-//     ReminderScreen(),
-//     HistoryScreen(),
-//   ];
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//         body: PageView(
-//             controller: _pageController,
-//             onPageChanged: (index) {
-//               setState(() => _selectedIndex = index);
-//             },
-//             children: _widgetOptions),
-//         bottomNavigationBar: CupertinoTabBar(
-//           iconSize: 24,
-//           items: <BottomNavigationBarItem>[
-//             BottomNavigationBarItem(
-//               icon: const Icon(FontAwesomeIcons.chartBar),
-//               label: AppLocalization.of(context).translate('home_page'),
-//             ),
-//             BottomNavigationBarItem(
-//               icon: const Icon(FontAwesomeIcons.fileMedicalAlt),
-//               label: AppLocalization.of(context).translate('function_page'),
-//             ),
-//             BottomNavigationBarItem(
-//               icon: const Icon(FontAwesomeIcons.bell),
-//               label: AppLocalization.of(context).translate('reminder_page'),
-//             ),
-//             BottomNavigationBarItem(
-//               icon: const Icon(FontAwesomeIcons.history),
-//               label: AppLocalization.of(context).translate('history_page'),
-//             ),
-//           ],
-//           currentIndex: _selectedIndex,
-//           onTap: _onItemTapped,
-//         ),
-//     );
-//   }
-// }

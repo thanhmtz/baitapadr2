@@ -319,10 +319,28 @@ class _BPLineChartState extends State<BPLineChart> {
       ),
       minX: minx,
       maxX: (segmentedControlGroupValue - 1).toDouble(),
-      maxY: (((max.toInt()) ~/ 10) * 10 + 10).toDouble(),
-      minY: (((min.toInt()) ~/ 10) * 10 - 10).toDouble(),
+      maxY: _getMaxY(),
+      minY: _getMinY(),
       lineBarsData: linesBarData1(),
     );
+  }
+
+  double _getMaxY() {
+    int maxYCalculated = (((max.toInt()) ~/ 10) * 10 + 10);
+    int minYCalculated = (((min.toInt()) ~/ 10) * 10 - 10);
+    if (maxYCalculated <= minYCalculated) {
+      maxYCalculated = minYCalculated + 20;
+    }
+    return maxYCalculated.toDouble();
+  }
+
+  double _getMinY() {
+    int minYCalculated = (((min.toInt()) ~/ 10) * 10 - 10);
+    int maxYCalculated = (((max.toInt()) ~/ 10) * 10 + 10);
+    if (maxYCalculated <= minYCalculated) {
+      return (minYCalculated - 20).toDouble();
+    }
+    return minYCalculated.toDouble();
   }
 
   //血压记录主界面的绘图线条颜色
@@ -446,10 +464,28 @@ class _BPLineChartState extends State<BPLineChart> {
           )),
       minX: minx,
       maxX: maxx,
-      maxY: (((max.toInt()) ~/ 10) * 10 + 10).toDouble(),
-      minY: (((min.toInt()) ~/ 10) * 10 - 10).toDouble(),
+      maxY: _getAvgMaxY(),
+      minY: _getAvgMinY(),
       lineBarsData: linesBarData2(),
     );
+  }
+
+  double _getAvgMaxY() {
+    int maxYCalculated = (((max.toInt()) ~/ 10) * 10 + 10);
+    int minYCalculated = (((min.toInt()) ~/ 10) * 10 - 10);
+    if (maxYCalculated <= minYCalculated) {
+      maxYCalculated = minYCalculated + 20;
+    }
+    return maxYCalculated.toDouble();
+  }
+
+  double _getAvgMinY() {
+    int minYCalculated = (((min.toInt()) ~/ 10) * 10 - 10);
+    int maxYCalculated = (((max.toInt()) ~/ 10) * 10 + 10);
+    if (maxYCalculated <= minYCalculated) {
+      return (minYCalculated - 20).toDouble();
+    }
+    return minYCalculated.toDouble();
   }
 
   List<LineChartBarData> linesBarData2() {

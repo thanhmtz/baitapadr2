@@ -302,11 +302,21 @@ class _BloodSugarState extends State<BloodSugar> {
                             date: time,
                           );
                           BsDataBaseProvider.db.insert(bloodSugarDB);
-                          Navigator.push(
-                              context,
-                              CupertinoPageRoute(
-                                  builder: (context) => BSResultScreen(
-                                      glu: bsList[2], state: bsList[1])));
+                          
+                          showCupertinoDialog(
+                            context: context,
+                            builder: (_) => CupertinoAlertDialog(
+                              title: Text('Đã lưu'),
+                              content: Text('Đường huyết ${bsList[2].toStringAsFixed(1)} mmol/L đã được lưu.'),
+                              actions: [
+                                CupertinoDialogAction(
+                                  child: Text('OK'),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ],
+                            ),
+                          );
+                          Navigator.pop(context);
                         } else {
                           return showDialog<void>(
                               context: context,

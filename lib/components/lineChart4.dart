@@ -299,8 +299,8 @@ class _SleepLineChartState extends State<SleepLineChart> {
           )),
       minX: minx,
       maxX: (segmentedControlGroupValue - 1).toDouble(),
-      maxY: (((max.toInt()) ~/ 10) * 10 + 10).toDouble(),
-      minY: (((min.toInt()) ~/ 10) * 10 - 10).toDouble(),
+      maxY: _getMaxY(),
+      minY: _getMinY(),
       lineBarsData: [
         LineChartBarData(
           spots: spotDatas,
@@ -409,8 +409,8 @@ class _SleepLineChartState extends State<SleepLineChart> {
           )),
       minX: minx,
       maxX: maxx,
-      maxY: (((max.toInt()) ~/ 10) * 10 + 10).toDouble(),
-      minY: (((min.toInt()) ~/ 10) * 10 - 10).toDouble(),
+      maxY: _getAvgMaxY(),
+      minY: _getAvgMinY(),
       lineBarsData: [
         LineChartBarData(
           spots: getAvgData(),
@@ -437,5 +437,41 @@ class _SleepLineChartState extends State<SleepLineChart> {
         ),
       ],
     );
+  }
+
+  double _getMaxY() {
+    int maxYCalculated = (((max.toInt()) ~/ 10) * 10 + 10);
+    int minYCalculated = (((min.toInt()) ~/ 10) * 10 - 10);
+    if (maxYCalculated <= minYCalculated) {
+      maxYCalculated = minYCalculated + 20;
+    }
+    return maxYCalculated.toDouble();
+  }
+
+  double _getMinY() {
+    int minYCalculated = (((min.toInt()) ~/ 10) * 10 - 10);
+    int maxYCalculated = (((max.toInt()) ~/ 10) * 10 + 10);
+    if (maxYCalculated <= minYCalculated) {
+      return (minYCalculated - 20).toDouble();
+    }
+    return minYCalculated.toDouble();
+  }
+
+  double _getAvgMaxY() {
+    int maxYCalculated = (((max.toInt()) ~/ 10) * 10 + 10);
+    int minYCalculated = (((min.toInt()) ~/ 10) * 10 - 10);
+    if (maxYCalculated <= minYCalculated) {
+      maxYCalculated = minYCalculated + 20;
+    }
+    return maxYCalculated.toDouble();
+  }
+
+  double _getAvgMinY() {
+    int minYCalculated = (((min.toInt()) ~/ 10) * 10 - 10);
+    int maxYCalculated = (((max.toInt()) ~/ 10) * 10 + 10);
+    if (maxYCalculated <= minYCalculated) {
+      return (minYCalculated - 20).toDouble();
+    }
+    return minYCalculated.toDouble();
   }
 }

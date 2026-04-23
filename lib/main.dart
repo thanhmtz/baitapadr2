@@ -1,8 +1,8 @@
 import 'package:bp_notepad/events/reminderBloc.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:bp_notepad/screens/mainScreen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:bp_notepad/screens/mainScreen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:bp_notepad/localization/languageConstants.dart';
 import 'package:bp_notepad/localization/appLocalization.dart';
@@ -118,7 +118,7 @@ class _BpNotepadState extends State<BpNotepad> {
               return supportedLocales.first;
             },
 
-            home: MyHomePage(),
+            home: MainScreen(),
           );
         },
       ),

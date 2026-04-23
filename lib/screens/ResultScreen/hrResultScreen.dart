@@ -1,13 +1,16 @@
 import 'dart:ui';
 import '../../localization/appLocalization.dart';
 import '../../services/heart_rate_report_service.dart';
+import '../../db/hr_databaseProvider.dart';
+import '../../models/hrDBModel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class HRResultScreen extends StatefulWidget {
-  HRResultScreen({this.hr});
+  HRResultScreen({this.hr, this.onSave});
 
   final int hr;
+  final Function(int) onSave;
 
   @override
   _HRResultScreenState createState() => _HRResultScreenState();
@@ -17,6 +20,7 @@ class _HRResultScreenState extends State<HRResultScreen> {
   final HeartRateReportService _reportService = HeartRateReportService();
   HeartRateReportResult _reportResult;
   bool _isLoading = true;
+  bool _isSaved = false;
 
   @override
   void initState() {
@@ -31,6 +35,23 @@ class _HRResultScreenState extends State<HRResultScreen> {
         _reportResult = result;
         _isLoading = false;
       });
+    }
+  }
+
+  void _saveHeartRate() async {
+    if (_isSaved) return;
+    
+    final now = DateTime.now();
+    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    
+    final hrData = HeartRateDB(hr: widget.hr, date: dateStr);
+    await HeartRateDataBaseProvider.db.insert(hrData);
+    
+    if (mounted) {
+      setState(() => _isSaved = true);
+      if (widget.onSave != null) {
+        widget.onSave(widget.hr);
+      }
     }
   }
 
@@ -59,6 +80,16 @@ class _HRResultScreenState extends State<HRResultScreen> {
           AppLocalization.of(context).translate('index_report'),
           style: TextStyle(color: CupertinoColors.white),
         ),
+        trailing: _isSaved 
+            ? null 
+            : CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: _saveHeartRate,
+                child: Text(
+                  'Lưu',
+                  style: TextStyle(color: CupertinoColors.activeGreen),
+                ),
+              ),
       ),
       child: SafeArea(
         child: _isLoading

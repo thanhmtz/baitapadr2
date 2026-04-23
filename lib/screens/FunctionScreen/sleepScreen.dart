@@ -93,15 +93,20 @@ class _SleepScreenState extends State<SleepScreen> {
     
     await SleepDataBaseProvider.db.insert(sleepDB);
     
-    Navigator.push(
-      context,
-      CupertinoPageRoute(
-        builder: (context) => SleepResultScreen(
-          sleep: _sleepDuration,
-          state: _result.quality,
-        ),
+    showCupertinoDialog(
+      context: context,
+      builder: (_) => CupertinoAlertDialog(
+        title: Text('Đã lưu'),
+        content: Text('Giấc ngủ ${_sleepDuration.toStringAsFixed(1)} giờ đã được lưu.'),
+        actions: [
+          CupertinoDialogAction(
+            child: Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
       ),
     );
+    Navigator.pop(context);
   }
 
   Future<bool> _showSaveConfirmation() async {

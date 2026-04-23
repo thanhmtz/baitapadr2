@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "http",
+        "url": "http://127.0.0.1:3579/api/hooks/01b37785-362f-49e0-a5de-52e734863393"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "http",
+        "url": "http://127.0.0.1:3579/api/hooks/01b37785-362f-49e0-a5de-52e734863393"
+      }
+    ],
+    "Stop": [
+      {
+        "type": "http",
+        "url": "http://127.0.0.1:3579/api/hooks/01b37785-362f-49e0-a5de-52e734863393"
+      }
+    ],
+    "Notification": [
+      {
+        "type": "http",
+        "url": "http://127.0.0.1:3579/api/hooks/01b37785-362f-49e0-a5de-52e734863393"
+      }
+    ]
+  }
+}

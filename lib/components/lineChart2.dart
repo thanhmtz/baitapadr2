@@ -260,8 +260,8 @@ class _BSLineChartState extends State<BSLineChart> {
           )),
       minX: minx,
       maxX: (segmentedControlGroupValue - 1).toDouble(),
-      minY: miny,
-      maxY: maxy,
+      minY: _getMinY(),
+      maxY: _getMaxY(),
       lineBarsData: [
         LineChartBarData(
           spots: spotDatas,
@@ -356,8 +356,8 @@ class _BSLineChartState extends State<BSLineChart> {
           )),
       minX: minx,
       maxX: maxx,
-      minY: miny,
-      maxY: maxy,
+      minY: _getMinY(),
+      maxY: _getMaxY(),
       lineBarsData: [
         LineChartBarData(
           spots: getAvgData(),
@@ -384,5 +384,21 @@ class _BSLineChartState extends State<BSLineChart> {
         ),
       ],
     );
+  }
+
+  double _getMinY() {
+    if (spotDatas.isEmpty) return miny;
+    final dataMin = spotDatas.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    final dataMax = spotDatas.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    if (dataMax <= dataMin) return dataMin - 5;
+    return dataMin;
+  }
+
+  double _getMaxY() {
+    if (spotDatas.isEmpty) return maxy;
+    final dataMin = spotDatas.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    final dataMax = spotDatas.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    if (dataMax <= dataMin) return dataMax + 5;
+    return dataMax;
   }
 }

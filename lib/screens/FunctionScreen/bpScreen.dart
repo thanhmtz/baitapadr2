@@ -487,14 +487,21 @@ class _BloodPressureState extends State<BloodPressure> {
                                 hr: bpList[3],
                                 date: time);
                             BpDataBaseProvider.db.insert(bloodPressureDB);
-                            Navigator.push(
-                                context,
-                                CupertinoPageRoute(
-                                    builder: (context) => BPResultScreen(
-                                          sbp: bpList[1],
-                                          dbp: bpList[2],
-                                          pulse: bpList[3],
-                                        )));
+                            
+                            showCupertinoDialog(
+                              context: context,
+                              builder: (_) => CupertinoAlertDialog(
+                                title: Text('Đã lưu'),
+                                content: Text('Huyết áp ${bpList[1]}/${bpList[2]} mmHg đã được lưu.'),
+                                actions: [
+                                  CupertinoDialogAction(
+                                    child: Text('OK'),
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                ],
+                              ),
+                            );
+                            Navigator.pop(context);
                           } else {
                             _pressureWarningDialog(context);
                           }
@@ -518,14 +525,21 @@ class _BloodPressureState extends State<BloodPressure> {
                                 hr: 60,
                                 date: time);
                             BpDataBaseProvider.db.insert(bloodPressureDB);
-                            Navigator.push(
-                                context,
-                                CupertinoPageRoute(
-                                    builder: (context) => BPResultScreen(
-                                          sbp: bpList[1],
-                                          dbp: bpList[2],
-                                          pulse: 60,
-                                        )));
+                            
+                            showCupertinoDialog(
+                              context: context,
+                              builder: (_) => CupertinoAlertDialog(
+                                title: Text('Đã lưu'),
+                                content: Text('Huyết áp ${bpList[1]}/${bpList[2]} mmHg đã được lưu.'),
+                                actions: [
+                                  CupertinoDialogAction(
+                                    child: Text('OK'),
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                ],
+                              ),
+                            );
+                            Navigator.pop(context);
                           } else {
                             _pressureWarningDialog(context);
                           }
@@ -571,14 +585,21 @@ class _BloodPressureState extends State<BloodPressure> {
                             hr: heartRate,
                             date: time);
                         BpDataBaseProvider.db.insert(bloodPressureDB);
-                        Navigator.push(
-                            context,
-                            CupertinoPageRoute(
-                                builder: (context) => BPResultScreen(
-                                      sbp: sbPressure,
-                                      dbp: dbPressure,
-                                      pulse: heartRate,
-                                    )));
+                        
+                        showCupertinoDialog(
+                          context: context,
+                          builder: (_) => CupertinoAlertDialog(
+                            title: Text('Đã lưu'),
+                            content: Text('Huyết áp $sbPressure/$dbPressure mmHg đã được lưu.'),
+                            actions: [
+                              CupertinoDialogAction(
+                                child: Text('OK'),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                            ],
+                          ),
+                        );
+                        Navigator.pop(context);
                       } else {
                         _pressureWarningDialog(context);
                       }

@@ -1,5 +1,9 @@
 {
   "tittle": "血圧ノート",
+  "nutrition_page": "栄養",
+  "search_food": "食品検索",
+  "food_search": "食品検索",
+  "food_search_hint": "食品名を入力",
   "home_page": "概要",
   "reminder_page": "服薬リマインダー",
   "function_page": "記録",

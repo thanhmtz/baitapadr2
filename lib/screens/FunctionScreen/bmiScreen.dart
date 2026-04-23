@@ -447,24 +447,30 @@ class _BmiScreenState extends State<BmiScreen> {
                       String time =
                           "${date.year.toString()}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
                       bmiResult = calc.calculateBMI();
-                      bfResult = calc.calculateBF();
-                      if (bmiResult > 10 && bmiResult < 100) {
-                        BodyDB bmiDB = new BodyDB(
-                            bmi: bmiResult,
-                            bf: bfResult,
-                            weight: weight,
-                            date: time,
-                            gender: selectedGender.index);
-                        BodyDataBaseProvider.db.insert(bmiDB);
-                        Navigator.push(
-                          context,
-                          CupertinoPageRoute(
-                            builder: (context) => BMIResultScreen(
-                              bmiResult: bmiResult,
-                              brResult: bfResult,
+bfResult = calc.calculateBF();
+                        if (bmiResult > 10 && bmiResult < 100) {
+                          BodyDB bmiDB = new BodyDB(
+                              bmi: bmiResult,
+                              bf: bfResult,
+                              weight: weight,
+                              date: time,
+                              gender: selectedGender.index);
+                          BodyDataBaseProvider.db.insert(bmiDB);
+                          
+                          showCupertinoDialog(
+                            context: context,
+                            builder: (_) => CupertinoAlertDialog(
+                              title: Text('Đã lưu'),
+                              content: Text('BMI ${bmiResult.toStringAsFixed(1)} đã được lưu.'),
+                              actions: [
+                                CupertinoDialogAction(
+                                  child: Text('OK'),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ],
                             ),
-                          ),
-                        );
+                          );
+                          Navigator.pop(context);
                       } else {
                         return showDialog<void>(
                             context: context,

@@ -55,6 +55,7 @@ dev_dependencies:
   device_info: ^2.0.0
   table_calendar: ^2.3.3
   image_picker: ^0.7.0
+  camera: ^0.8.1
   crypto: ^3.0.1
   hex: ^0.2.0
   dio: ^4.0.0
