@@ -237,7 +237,7 @@ class _BPLineChartState extends State<BPLineChart> {
         bottomTitles: SideTitles(
           showTitles: true,
           reservedSize: 22,
-          getTextStyles: (value) => const TextStyle(
+          getTextStyles: (value, text) => const TextStyle(
             color: const Color(0xB3FFFFFF),
             fontWeight: FontWeight.bold,
             fontSize: 12,
@@ -265,7 +265,7 @@ class _BPLineChartState extends State<BPLineChart> {
         ),
         leftTitles: SideTitles(
           showTitles: true,
-          getTextStyles: (value) => const TextStyle(
+          getTextStyles: (value, text) => const TextStyle(
             color: const Color(0xB3FFFFFF),
             fontWeight: FontWeight.bold,
             fontSize: 14,
@@ -397,7 +397,7 @@ class _BPLineChartState extends State<BPLineChart> {
         bottomTitles: SideTitles(
           showTitles: true,
           reservedSize: 22,
-          getTextStyles: (value) => const TextStyle(
+          getTextStyles: (value, text) => const TextStyle(
             color: const Color(0xff72719b),
             fontWeight: FontWeight.bold,
             fontSize: 12,
@@ -411,7 +411,7 @@ class _BPLineChartState extends State<BPLineChart> {
         ),
         leftTitles: SideTitles(
           showTitles: true,
-          getTextStyles: (value) => const TextStyle(
+          getTextStyles: (value, text) => const TextStyle(
             color: const Color(0xff75729e),
             fontWeight: FontWeight.bold,
             fontSize: 14,

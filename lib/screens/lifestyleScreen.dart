@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:bp_notepad/db/bp_databaseProvider.dart';
 import 'package:bp_notepad/db/bs_databaseProvider.dart';
 import 'package:bp_notepad/db/body_databaseProvider.dart';
-import 'package:bp_notepad/db/alarm_databaseProvider.dart';
 import 'package:bp_notepad/db/hr_databaseProvider.dart';
 import 'package:bp_notepad/db/sleep_databaseProvider.dart';
-import 'package:bp_notepad/db/nutrition_databaseProvider.dart';
 import 'package:bp_notepad/models/bpDBModel.dart';
 import 'package:bp_notepad/models/bsDBModel.dart';
 import 'package:bp_notepad/models/bodyModel.dart';
@@ -21,17 +19,16 @@ import 'package:bp_notepad/screens/FunctionScreen/waterReminderScreen.dart';
 import 'package:bp_notepad/screens/FunctionScreen/healthTrackingScreen.dart';
 
 // ─── Color tokens ─────────────────────────────────────────────────────────────
-const _green       = Color(0xFF3DAA72);
-const _greenLight  = Color(0xFF4EC98A);
-const _greenBg     = Color(0xFFEAF7F0);
-const _redAccent   = Color(0xFFFF6B6B);
-const _blueAccent  = Color(0xFF4A9EFF);
-const _orangeAccent= Color(0xFFFF9F43);
-const _purpleAccent= Color(0xFF9B59B6);
-const _pageBg      = Color(0xFFF4F6F9);
-const _cardBg      = Color(0xFFFFFFFF);
-const _textPrimary = Color(0xFF1A2332);
-const _textSec     = Color(0xFF7A8699);
+final Color _green         = const Color(0xFF3DAA72);
+final Color _greenBg       = const Color(0xFFEAF7F0);
+final Color _redAccent     = const Color(0xFFFF6B6B);
+final Color _blueAccent    = const Color(0xFF4A9EFF);
+final Color _orangeAccent  = const Color(0xFFFF9F43);
+final Color _purpleAccent  = const Color(0xFF9B59B6);
+final Color _pageBg        = const Color(0xFFF4F6F9);
+final Color _cardBg        = const Color(0xFFFFFFFF);
+final Color _textPrimary   = const Color(0xFF1A2332);
+final Color _textSec       = const Color(0xFF7A8699);
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -41,6 +38,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isLoading = true;
 
+  // Dùng kiểu nullable kiểu cũ (không có ?)
   BloodPressureDB _latestBP;
   BloodSugarDB    _latestBS;
   BodyDB          _latestBMI;
@@ -67,23 +65,43 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    final bpList   = await BpDataBaseProvider.db.getData();
-    final bsList   = await BsDataBaseProvider.db.getData();
-    final bodyList = await BodyDataBaseProvider.db.getData();
-    final hrList   = await HeartRateDataBaseProvider.db.getData();
-    final sleepList= await SleepDataBaseProvider.db.getData();
+    final bpList    = await BpDataBaseProvider.db.getData();
+    final bsList    = await BsDataBaseProvider.db.getData();
+    final bodyList  = await BodyDataBaseProvider.db.getData();
+    final hrList    = await HeartRateDataBaseProvider.db.getData();
+    final sleepList = await SleepDataBaseProvider.db.getData();
 
-    if (bpList.isNotEmpty)   { bpList.sort((a,b)=>DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));     _latestBP    = bpList.first; }
-    if (bsList.isNotEmpty)   { bsList.sort((a,b)=>DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));     _latestBS    = bsList.first; }
-    if (bodyList.isNotEmpty) { bodyList.sort((a,b)=>DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));   _latestBMI   = bodyList.first; }
-    if (hrList.isNotEmpty)   { hrList.sort((a,b)=>DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));     _latestHR    = hrList.first.hr; }
-    if (sleepList.isNotEmpty){ sleepList.sort((a,b)=>DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));  _latestSleep = sleepList.first.sleep; }
+    if (bpList != null && bpList.isNotEmpty) {
+      bpList.sort((a, b) => DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));
+      _latestBP = bpList.first;
+    }
+    if (bsList != null && bsList.isNotEmpty) {
+      bsList.sort((a, b) => DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));
+      _latestBS = bsList.first;
+    }
+    if (bodyList != null && bodyList.isNotEmpty) {
+      bodyList.sort((a, b) => DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));
+      _latestBMI = bodyList.first;
+    }
+    if (hrList != null && hrList.isNotEmpty) {
+      hrList.sort((a, b) => DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));
+      _latestHR = hrList.first.hr;
+    }
+    if (sleepList != null && sleepList.isNotEmpty) {
+      sleepList.sort((a, b) => DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));
+      _latestSleep = sleepList.first.sleep;
+    }
 
     setState(() => _isLoading = false);
   }
 
   String _fmt(String date) {
-    try { final d = DateTime.parse(date); return '${d.day}/${d.month}'; } catch (_) { return date; }
+    try {
+      final d = DateTime.parse(date);
+      return '${d.day}/${d.month}';
+    } catch (_) {
+      return date;
+    }
   }
 
   @override
@@ -93,91 +111,91 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: _green))
           : RefreshIndicator(
-              onRefresh: _loadData,
-              color: _green,
-              child: CustomScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  _buildSliverHeader(),
-                  SliverToBoxAdapter(child: _buildBanner()),
-                  SliverToBoxAdapter(child: _buildSectionLabel('📓 Nhật ký sức khỏe')),
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    sliver: SliverGrid(
-                      delegate: SliverChildListDelegate([
-                        _buildHealthCard(
-                          title: 'Huyết áp',
-                          value: _latestBP != null ? '${_latestBP.sbp}/${_latestBP!.dbp}' : '--/--',
-                          unit: 'mmHg',
-                          sub: _latestBP != null ? _fmt(_latestBP.date) : 'Chưa có dữ liệu',
-                          accentColor: _redAccent,
-                          bgColor: Color(0xFFFFF0F0),
-                          imagePath: 'assets/images/bp_device.png',
-                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BloodPressure())),
-                        ),
-                        _buildHealthCard(
-                          title: 'Đường huyết',
-                          value: _latestBS != null ? _latestBS!.glu.toStringAsFixed(1) : '--',
-                          unit: 'mmol/L',
-                          sub: _latestBS != null ? _fmt(_latestBS!.date) : 'Chưa có dữ liệu',
-                          accentColor: _redAccent,
-                          bgColor: Color(0xFFFFF5F5),
-                          imagePath: 'assets/images/bs_device.png',
-                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BloodSugar())),
-                        ),
-                        _buildHealthCard(
-                          title: 'Cân nặng & chỉ số BMI',
-                          value: _latestBMI != null ? '${_latestBMI!.weight.toStringAsFixed(1)}' : '--',
-                          unit: 'KG',
-                          sub: _latestBMI != null ? 'BMI: ${_latestBMI!.bmi.toStringAsFixed(1)}' : 'Chưa có dữ liệu',
-                          accentColor: _blueAccent,
-                          bgColor: Color(0xFFF0F5FF),
-                          imagePath: 'assets/images/scale.png',
-                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BmiScreen())),
-                        ),
-                        _buildHealthCard(
-                          title: 'Nhắc nhở uống nước',
-                          value: '600',
-                          unit: '/2000ml',
-                          sub: 'Hôm nay',
-                          accentColor: _orangeAccent,
-                          bgColor: Color(0xFFFFF8EE),
-                          imagePath: 'assets/images/water_bottle.png',
-                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => WaterReminderScreen())),
-                        ),
-                        _buildHealthCard(
-                          title: 'Nhịp tim',
-                          value: _latestHR != null ? '$_latestHR' : '--',
-                          unit: 'bpm',
-                          sub: _latestHR != null ? 'Gần nhất' : 'Chưa có dữ liệu',
-                          accentColor: _redAccent,
-                          bgColor: Color(0xFFFFF0F0),
-                          imagePath: 'assets/images/heart.png',
-                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => HeartRateScreen())),
-                        ),
-                        _buildHealthCard(
-                          title: 'Dinh dưỡng',
-                          value: '--',
-                          unit: 'kcal',
-                          sub: 'Hôm nay',
-                          accentColor: _purpleAccent,
-                          bgColor: Color(0xFFF8F0FF),
-                          imagePath: 'assets/images/nutrition.png',
-                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => NutritionScreen())),
-                        ),
-                      ]),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 0.95,
-                      ),
-                    ),
+        onRefresh: _loadData,
+        color: _green,
+        child: CustomScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          slivers: [
+            _buildSliverHeader(),
+            SliverToBoxAdapter(child: _buildBanner()),
+            SliverToBoxAdapter(child: _buildSectionLabel('📓 Nhật ký sức khỏe')),
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              sliver: SliverGrid(
+                delegate: SliverChildListDelegate([
+                  _buildHealthCard(
+                    title: 'Huyết áp',
+                    value: _latestBP != null ? '${_latestBP.sbp}/${_latestBP.dbp}' : '--/--',
+                    unit: 'mmHg',
+                    sub: _latestBP != null ? _fmt(_latestBP.date) : 'Chưa có dữ liệu',
+                    accentColor: _redAccent,
+                    bgColor: Color(0xFFFFF0F0),
+                    imagePath: 'assets/images/bp_device.png',
+                    onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BloodPressure())),
                   ),
-                  SliverToBoxAdapter(child: SizedBox(height: 90)),
-                ],
+                  _buildHealthCard(
+                    title: 'Đường huyết',
+                    value: _latestBS != null ? _latestBS.glu.toStringAsFixed(1) : '--',
+                    unit: 'mmol/L',
+                    sub: _latestBS != null ? _fmt(_latestBS.date) : 'Chưa có dữ liệu',
+                    accentColor: _redAccent,
+                    bgColor: Color(0xFFFFF5F5),
+                    imagePath: 'assets/images/bs_device.png',
+                    onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BloodSugar())),
+                  ),
+                  _buildHealthCard(
+                    title: 'Cân nặng & chỉ số BMI',
+                    value: _latestBMI != null ? _latestBMI.weight.toStringAsFixed(1) : '--',
+                    unit: 'KG',
+                    sub: _latestBMI != null ? 'BMI: ${_latestBMI.bmi.toStringAsFixed(1)}' : 'Chưa có dữ liệu',
+                    accentColor: _blueAccent,
+                    bgColor: Color(0xFFF0F5FF),
+                    imagePath: 'assets/images/scale.png',
+                    onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BmiScreen())),
+                  ),
+                  _buildHealthCard(
+                    title: 'Nhắc nhở uống nước',
+                    value: '600',
+                    unit: '/2000ml',
+                    sub: 'Hôm nay',
+                    accentColor: _orangeAccent,
+                    bgColor: Color(0xFFFFF8EE),
+                    imagePath: 'assets/images/water_bottle.png',
+                    onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => WaterReminderScreen())),
+                  ),
+                  _buildHealthCard(
+                    title: 'Nhịp tim',
+                    value: _latestHR != null ? '$_latestHR' : '--',
+                    unit: 'bpm',
+                    sub: _latestHR != null ? 'Gần nhất' : 'Chưa có dữ liệu',
+                    accentColor: _redAccent,
+                    bgColor: Color(0xFFFFF0F0),
+                    imagePath: 'assets/images/heart.png',
+                    onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => HeartRateScreen())),
+                  ),
+                  _buildHealthCard(
+                    title: 'Dinh dưỡng',
+                    value: '--',
+                    unit: 'kcal',
+                    sub: 'Hôm nay',
+                    accentColor: _purpleAccent,
+                    bgColor: Color(0xFFF8F0FF),
+                    imagePath: 'assets/images/nutrition.png',
+                    onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => NutritionScreen())),
+                  ),
+                ]),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.95,
+                ),
               ),
             ),
+            SliverToBoxAdapter(child: SizedBox(height: 90)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -200,7 +218,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
           Spacer(),
-          // Weather chip
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -213,7 +230,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               children: [
                 Icon(CupertinoIcons.cloud_fill, size: 14, color: _green),
                 SizedBox(width: 5),
-                Text('26°C', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _green)),
+                Text(
+                  '26°C',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _green),
+                ),
               ],
             ),
           ),
@@ -244,11 +264,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
       child: Stack(
         children: [
-          // Decorative circles
           Positioned(
-            right: -20, top: -20,
+            right: -20,
+            top: -20,
             child: Container(
-              width: 120, height: 120,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withOpacity(0.08),
@@ -256,9 +277,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            right: 30, bottom: -30,
+            right: 30,
+            bottom: -30,
             child: Container(
-              width: 80, height: 80,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withOpacity(0.06),
@@ -269,9 +292,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             padding: EdgeInsets.all(20),
             child: Row(
               children: [
-                // Left: heart icon
                 Container(
-                  width: 60, height: 60,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(16),
@@ -291,28 +314,45 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       SizedBox(height: 6),
                       Text(
                         'Kiểm tra ngay!',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                // Right: CTA button
                 Column(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     GestureDetector(
-                      onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BloodPressure())),
+                      onTap: () => Navigator.push(
+                          context, CupertinoPageRoute(builder: (_) => BloodPressure())),
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
-                          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 8,
+                              offset: Offset(0, 3),
+                            )
+                          ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Đo ngay', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _green)),
+                            Text(
+                              'Đo ngay',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _green,
+                              ),
+                            ),
                             SizedBox(width: 4),
                             Icon(CupertinoIcons.arrow_right, size: 13, color: _green),
                           ],
@@ -320,10 +360,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => HealthTrackingScreen())),
+                      onTap: () => Navigator.push(
+                          context, CupertinoPageRoute(builder: (_) => HealthTrackingScreen())),
                       child: Text(
                         'Lịch sử >',
-                        style: TextStyle(fontSize: 12, color: Colors.white, decoration: TextDecoration.underline, decorationColor: Colors.white54),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                          decoration: TextDecoration.underline,
+                        ),
                       ),
                     ),
                   ],
@@ -342,12 +387,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       padding: EdgeInsets.fromLTRB(16, 12, 16, 10),
       child: Text(
         text,
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textPrimary, letterSpacing: -0.2),
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: _textPrimary,
+          letterSpacing: -0.2,
+        ),
       ),
     );
   }
 
   // ─── Health card ──────────────────────────────────────────────────────────
+  // Dùng @required thay vì required (Dart cũ)
   Widget _buildHealthCard({
     @required String title,
     @required String value,
@@ -377,7 +428,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Title row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -395,8 +445,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ],
             ),
-
-            // Illustration (try image, fallback to icon)
             Align(
               alignment: Alignment.centerRight,
               child: Image.asset(
@@ -415,8 +463,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ),
             ),
-
-            // Value row
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -435,14 +481,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     padding: EdgeInsets.only(bottom: 2),
                     child: Text(
                       unit,
-                      style: TextStyle(fontSize: 11, color: _textSec, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _textSec,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
               ],
             ),
-
-            // Sub text
             Text(
               sub,
               style: TextStyle(fontSize: 10.5, color: _textSec),

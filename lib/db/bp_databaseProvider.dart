@@ -100,6 +100,30 @@ class BpDataBaseProvider {
       whereArgs: [id],
     );
   }
+
+  Future<List<Map<String, dynamic>>> getDailyData({int days = 30}) async {
+    final db = await database;
+    final now = DateTime.now();
+    final startDate = now.subtract(Duration(days: days));
+    final startDateStr = startDate.toIso8601String().split('T')[0];
+
+    var datas = await db.query(
+      TABLE_NAME,
+      columns: [COLUMN_ID, COLUMN_TIME, COLUMN_SBP],
+      where: "SUBSTR($COLUMN_TIME, 1, 10) >= ?",
+      whereArgs: [startDateStr],
+      orderBy: "$COLUMN_TIME ASC",
+    );
+
+    Map<String, int> dailyData = {};
+    datas.forEach((element) {
+      BloodPressureDB bpDB = BloodPressureDB.fromMap(element);
+      String day = bpDB.date.substring(0, 10);
+      dailyData[day] = bpDB.sbp;
+    });
+
+    return dailyData.entries.map((e) => {'date': e.key, 'value': e.value}).toList();
+  }
 }
 
 // SQLite具有以下五种数据类型：

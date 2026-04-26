@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:bp_notepad/screens/FunctionScreen/bpTrackingScreen.dart';
 import 'package:bp_notepad/screens/FunctionScreen/bpScreen.dart';
 import 'package:bp_notepad/screens/FunctionScreen/bsScreen.dart';
 import 'package:bp_notepad/screens/FunctionScreen/bmiScreen.dart';
@@ -37,7 +38,7 @@ class AddScreen extends StatelessWidget {
                         title: 'Huyết áp',
                         subtitle: 'Đo huyết áp',
                         color: CupertinoColors.systemRed,
-                        onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BloodPressure())),
+                        onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BpTrackingScreen())),
                       ),
                       _CategoryItem(
                         icon: CupertinoIcons.drop_fill,

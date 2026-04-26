@@ -1,590 +1,305 @@
-import 'package:bp_notepad/components/constants.dart';
-import 'package:bp_notepad/db/alarm_databaseProvider.dart';
-import 'package:bp_notepad/db/body_databaseProvider.dart';
 import 'package:bp_notepad/db/bp_databaseProvider.dart';
 import 'package:bp_notepad/db/bs_databaseProvider.dart';
-import 'package:bp_notepad/db/sleep_databaseProvider.dart';
-import 'package:bp_notepad/localization/appLocalization.dart';
+import 'package:bp_notepad/db/body_databaseProvider.dart';
+import 'package:bp_notepad/db/hr_databaseProvider.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:async/async.dart';
-import 'dart:math';
 
 class HistoryScreen extends StatefulWidget {
-  HistoryScreen({Key key}) : super(key: key);
-
   @override
   _HistoryScreenState createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  // Metrics: 0: Heart Rate, 1: Blood Sugar, 2: Blood Pressure, 3: BMI
-  int _currentMetricIndex = 0;
-  List<String> _metricNames = [
-    'Heart Rate (BPM)',
-    'Blood Sugar (mg/dL)',
-    'Blood Pressure (mmHg)',
-    'BMI'
+  int _selectedIndex = 0;
+  
+  final List<Map<String, dynamic>> _metrics = [
+    {'key': 'hr', 'title': 'Nhịp tim', 'unit': 'BPM', 'color': CupertinoColors.systemRed},
+    {'key': 'bs', 'title': 'Đường huyết', 'unit': 'mmol/L', 'color': CupertinoColors.systemGreen},
+    {'key': 'bp', 'title': 'Huyết áp', 'unit': 'mmHg', 'color': CupertinoColors.systemBlue},
+    {'key': 'bmi', 'title': 'BMI', 'unit': '', 'color': CupertinoColors.systemOrange},
   ];
-
-  // Time range: 0: Today, 1: Week, 2: Month
-  int _timeRangeIndex = 0;
-  List<String> _timeRangeNames = ['Today', 'Week', 'Month'];
-
-  AsyncMemoizer _memoizer;
-  List<FlSpot> _heartRateSpots = [];
-  List<FlSpot> _bloodSugarSpots = [];
-  List<FlSpot> _bloodPressureSysSpots = [];
-  List<FlSpot> _bloodPressureDiaSpots = [];
-  List<FlSpot> _bmiSpots = [];
-
-  double _latestValue = 0;
-  double _averageValue = 0;
+  
+  List<BarChartGroupData> _barGroups = [];
+  List<FlSpot> _spots = [];
+  List<FlSpot> _spots2 = [];
+  List<String> _dates = [];
+  bool _isLoading = true;
+  double _avgValue = 0;
+  double _minValue = 0;
+  double _maxValue = 0;
 
   @override
   void initState() {
     super.initState();
-    _memoizer = AsyncMemoizer();
     _loadData();
   }
-
+  
   Future<void> _loadData() async {
-    return _memoizer.runOnce(() async {
-      // Fetch all data from databases
-      final bpList = await BpDataBaseProvider.db.getData();
-      final bsList = await BsDataBaseProvider.db.getData();
-      final bmiList = await BodyDataBaseProvider.db.getData();
-
-      // Clear existing spots
-      _heartRateSpots = [];
-      _bloodSugarSpots = [];
-      _bloodPressureSysSpots = [];
-      _bloodPressureDiaSpots = [];
-      _bmiSpots = [];
-
-      // Get current date for filtering
-      final now = DateTime.now();
-      DateTime startDate;
-      switch (_timeRangeIndex) {
-        case 0: // Today
-          startDate = DateTime(now.year, now.month, now.day);
-          break;
-        case 1: // Week
-          startDate = now.subtract(Duration(days: 7));
-          break;
-        case 2: // Month
-          startDate = DateTime(now.year, now.month - 1 >= 0 ? now.month - 1 : 12,
-              now.year > 0 ? now.day : now.day,
-              now.year > 0 && now.month - 1 < 0 ? now.year - 1 : now.year);
-          break;
-        default:
-          startDate = DateTime(now.year, now.month, now.day);
-      }
-
-      // Process blood pressure data (contains heart rate too)
-      for (final item in bpList) {
-        final date = DateTime.parse(item.date);
-        if (date.isBefore(startDate)) continue;
-        final x = date.millisecondsSinceEpoch.toDouble();
-        // Heart rate
-        _heartRateSpots.add(FlSpot(x, item.hr.toDouble()));
-        // Blood pressure
-        _bloodPressureSysSpots.add(FlSpot(x, item.sbp.toDouble()));
-        _bloodPressureDiaSpots.add(FlSpot(x, item.dbp.toDouble()));
-      }
-
-      // Process blood sugar data (convert mmol/L to mg/dL: 1 mmol/L = 18 mg/dL)
-      for (final item in bsList) {
-        final date = DateTime.parse(item.date);
-        if (date.isBefore(startDate)) continue;
-        final x = date.millisecondsSinceEpoch.toDouble();
-        final mgDL = item.glu * 18;
-        _bloodSugarSpots.add(FlSpot(x, mgDL));
-      }
-
-      // Process BMI data
-      for (final item in bmiList) {
-        final date = DateTime.parse(item.date);
-        if (date.isBefore(startDate)) continue;
-        final x = date.millisecondsSinceEpoch.toDouble();
-        _bmiSpots.add(FlSpot(x, item.bmi.toDouble()));
-      }
-
-      // Sort spots by x (time)
-      _heartRateSpots.sort((a, b) => a.x.compareTo(b.x));
-      _bloodSugarSpots.sort((a, b) => a.x.compareTo(b.x));
-      _bloodPressureSysSpots.sort((a, b) => a.x.compareTo(b.x));
-      _bloodPressureDiaSpots.sort((a, b) => a.x.compareTo(b.x));
-      _bmiSpots.sort((a, b) => a.x.compareTo(b.x));
-
-      // Calculate latest and average values for current metric
-      _calculateStats();
-    });
-  }
-
-  void _calculateStats() {
-    List<FlSpot> spots;
-    switch (_currentMetricIndex) {
-      case 0:
-        spots = _heartRateSpots;
+    setState(() => _isLoading = true);
+    
+    final key = _metrics[_selectedIndex]['key'];
+    List<dynamic> data = [];
+    List<String> dateList = [];
+    
+    switch (key) {
+      case 'hr':
+        data = await HeartRateDataBaseProvider.db.getData();
+        dateList = data.map((e) => e.date ?? '').toList();
+        _spots = data.asMap().entries.map((e) => 
+          FlSpot(e.key.toDouble(), e.value.hr.toDouble())).toList();
         break;
-      case 1:
-        spots = _bloodSugarSpots;
+      case 'bs':
+        data = await BsDataBaseProvider.db.getData();
+        dateList = data.map((e) => e.date ?? '').toList();
+        _spots = data.asMap().entries.map((e) => 
+          FlSpot(e.key.toDouble(), e.value.bs.toDouble())).toList();
         break;
-      case 2:
-        // For blood pressure, we'll show average of systolic? Or we can show both?
-        // For simplicity, we'll use systolic for stats
-        spots = _bloodPressureSysSpots;
+      case 'bp':
+        final bpData = await BpDataBaseProvider.db.getData();
+        dateList = bpData.map((e) => e.date ?? '').toList();
+        _spots = bpData.asMap().entries.map((e) => 
+          FlSpot(e.key.toDouble(), e.value.sbp.toDouble())).toList();
+        _spots2 = bpData.asMap().entries.map((e) => 
+          FlSpot(e.key.toDouble(), e.value.dbp.toDouble())).toList();
         break;
-      case 3:
-        spots = _bmiSpots;
+      case 'bmi':
+        data = await BodyDataBaseProvider.db.getData();
+        dateList = data.map((e) => e.date ?? '').toList();
+        _spots = data.asMap().entries.map((e) => 
+          FlSpot(e.key.toDouble(), e.value.bmi.toDouble())).toList();
         break;
-      default:
-        spots = [];
     }
-
-    if (spots.isNotEmpty) {
-      _latestValue = spots.last.y;
-      final sum = spots.fold(0.0, (sum, spot) => sum + spot.y);
-      _averageValue = sum / spots.length;
-    } else {
-      _latestValue = 0;
-      _averageValue = 0;
-    }
-  }
-
-  void _changeMetric(int delta) {
-    setState(() {
-      _currentMetricIndex = (_currentMetricIndex + delta) % 4;
-      if (_currentMetricIndex < 0) _currentMetricIndex += 4;
-      _loadData(); // Reload data for new metric
-    });
-  }
-
-  void _changeTimeRange(int delta) {
-    setState(() {
-      _timeRangeIndex = (_timeRangeIndex + delta) % 3;
-      if (_timeRangeIndex < 0) _timeRangeIndex += 3;
-      _loadData(); // Reload data for new time range
-    });
-  }
-
-  Widget _buildMetricSwitchBar() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CupertinoButton(
-            padding: EdgeInsets.zero,
-            minSize: 0,
-            onPressed: () => _changeMetric(-1),
-            child: Icon(
-              CupertinoIcons.chevron_left,
-              color: CupertinoColors.activeBlue,
-              size: 28,
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _metricNames[_currentMetricIndex],
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: CupertinoColors.label,
+    
+    // Format dates
+    _dates = dateList.map((d) {
+      try {
+        final dt = DateTime.parse(d);
+        return DateFormat('dd/MM').format(dt);
+      } catch (_) {
+        return '';
+      }
+    }).toList();
+    
+    // Create bar groups (last 7 days)
+    final limit = _spots.length > 7 ? 7 : _spots.length;
+    _barGroups = [];
+    for (int i = 0; i < limit; i++) {
+      final showSecondLine = _selectedIndex == 2 && _spots2.isNotEmpty;
+      _barGroups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              y: _spots[i].y,
+              width: showSecondLine ? 12 : 20,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(6),
+                topRight: Radius.circular(6),
               ),
             ),
-          ),
-          SizedBox(width: 12),
-          CupertinoButton(
-            padding: EdgeInsets.zero,
-            minSize: 0,
-            onPressed: () => _changeMetric(1),
-            child: Icon(
-              CupertinoIcons.chevron_right,
-              color: CupertinoColors.activeBlue,
-              size: 28,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeFilter() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Health History',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: CupertinoColors.label,
-            ),
-          ),
-          Row(
-            children: List.generate(_timeRangeNames.length, (index) {
-              final isSelected = index == _timeRangeIndex;
-              return Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4),
-                child: ChoiceChip(
-                  label: Text(
-                    _timeRangeNames[index],
-                    style: TextStyle(
-                      color: isSelected ? CupertinoColors.white : CupertinoColors.label,
-                      fontSize: 14,
-                    ),
-                  ),
-                  selected: isSelected,
-                  backgroundColor: CupertinoColors.systemGroupedBackground,
-                  selectedColor: CupertinoColors.activeBlue,
-                  onSelected: (_) => _changeTimeRange(index - _timeRangeIndex),
-                  labelPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+            if (showSecondLine)
+              BarChartRodData(
+                y: _spots2[i].y,
+                width: 12,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(6),
+                  topRight: Radius.circular(6),
                 ),
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChart() {
-    // Determine which spots to show based on current metric
-    List<FlSpot> spots;
-    List<FlSpot> spots2; // For second line in BP
-    bool showSecondLine = false;
-    Gradient gradient;
-
-    switch (_currentMetricIndex) {
-      case 0: // Heart Rate
-        spots = _heartRateSpots;
-        gradient = LinearGradient(
-          colors: [
-            CupertinoColors.systemRed.withOpacity(0.8),
-            CupertinoColors.systemRed.withOpacity(0.3),
+              ),
           ],
-        );
-        break;
-      case 1: // Blood Sugar
-        spots = _bloodSugarSpots;
-        gradient = LinearGradient(
-          colors: [
-            CupertinoColors.systemGreen.withOpacity(0.8),
-            CupertinoColors.systemGreen.withOpacity(0.3),
-          ],
-        );
-        break;
-      case 2: // Blood Pressure
-        spots = _bloodPressureSysSpots;
-        spots2 = _bloodPressureDiaSpots;
-        showSecondLine = true;
-        gradient = LinearGradient(
-          colors: [
-            CupertinoColors.systemBlue.withOpacity(0.8),
-            CupertinoColors.systemBlue.withOpacity(0.3),
-          ],
-        );
-        break;
-      case 3: // BMI
-        spots = _bmiSpots;
-        gradient = LinearGradient(
-          colors: [
-            CupertinoColors.systemPurple.withOpacity(0.8),
-            CupertinoColors.systemPurple.withOpacity(0.3),
-          ],
-        );
-        break;
-      default:
-        spots = [];
-        gradient = LinearGradient(
-          colors: [CupertinoColors.label, CupertinoColors.label],
-        );
-    }
-
-    // If no data, show empty state
-    if (spots.isEmpty) {
-      return Center(
-        child: Text(
-          'No data available for selected time range',
-          style: TextStyle(
-            color: CupertinoColors.label,
-            fontSize: 16,
-          ),
         ),
       );
     }
-
-    // Calculate min and max for y-axis with some padding
-    double minY = spots.map((e) => e.y).reduce((a, b) => a < b ? a : b);
-    double maxY = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
-    if (showSecondLine) {
-      final minY2 = spots2.map((e) => e.y).reduce((a, b) => a < b ? a : b);
-      final maxY2 = spots2.map((e) => e.y).reduce((a, b) => a > b ? a : b);
-      minY = minY < minY2 ? minY : minY2;
-      maxY = maxY > maxY2 ? maxY : maxY2;
+    
+    if (_spots.isNotEmpty) {
+      final values = _spots.map((s) => s.y).toList();
+      _avgValue = values.reduce((a, b) => a + b) / values.length;
+      _minValue = values.reduce((a, b) => a < b ? a : b);
+      _maxValue = values.reduce((a, b) => a > b ? a : b);
     }
-    if (maxY <= minY) {
-      minY = minY - 10;
-      maxY = maxY + 10;
-    }
-    final padding = (maxY - minY) * 0.15;
-    final bottomY = (maxY - padding < 0) ? 0 : maxY - padding;
-    final topY = maxY + padding;
-
-    return AspectRatio(
-      aspectRatio: 1.7,
-      child: Padding(
-        padding: EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
-        child: LineChart(
-          LineChartData(
-            gridData: FlGridData(
-              show: true,
-              drawVerticalLine: true,
-              horizontalInterval: (topY - bottomY) / 5,
-              verticalInterval: (_getTimeIntervalSpots(spots) / 5),
-              getDrawingHorizontalLine: (value) {
-                return FlLine(
-                  color: CupertinoColors.systemGrey.withOpacity(0.2),
-                  strokeWidth: 1,
-                );
-              },
-              getDrawingVerticalLine: (value) {
-                return FlLine(
-                  color: CupertinoColors.systemGrey.withOpacity(0.2),
-                  strokeWidth: 1,
-                );
-              },
-            ),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: SideTitles(showTitles: false),
-              topTitles: SideTitles(showTitles: false),
-              bottomTitles: SideTitles(
-                showTitles: true,
-                getTextStyles: (value) => TextStyle(
-                  color: CupertinoColors.label,
-                  fontSize: 10,
-                ),
-                margin: 8,
-                getTitles: (value) {
-                  // Convert milliseconds to date string
-                  final date = DateTime.fromMillisecondsSinceEpoch(value.round());
-                  switch (_timeRangeIndex) {
-                    case 0: // Today
-                      return DateFormat.Hm().format(date);
-                    case 1: // Week
-                      return DateFormat.Md().format(date);
-                    case 2: // Month
-                      return DateFormat.Md().format(date);
-                    default:
-                      return '';
-                  }
-                },
-              ),
-              leftTitles: SideTitles(
-                showTitles: true,
-                getTextStyles: (value) => TextStyle(
-                  color: CupertinoColors.label,
-                  fontSize: 10,
-                ),
-                margin: 12,
-                interval: (topY - bottomY) / 5,
-                getTitles: (value) {
-                  return value.toStringAsFixed(0);
-                },
-                reservedSize: 30,
-              ),
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border.all(color: CupertinoColors.systemGrey.withOpacity(0.2)),
-            ),
-            minX: spots.first.x,
-            maxX: spots.last.x,
-            minY: bottomY,
-            maxY: topY,
-lineBarsData: [
-                LineChartBarData(
-                  spots: spots,
-                  isCurved: true,
-                  colors: [gradient.colors.first],
-                  barWidth: 4,
-                  isStrokeCapRound: true,
-                  dotData: FlDotData(
-                    show: true,
-                    getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                      radius: 4,
-                      color: gradient.colors.first,
-                      strokeWidth: 2,
-                      strokeColor: CupertinoColors.white,
-                    ),
-                  ),
-                  belowBarData: BarAreaData(
-                    show: true,
-                    colors: [
-                      gradient.colors.first.withOpacity(0.3),
-                      gradient.colors.first.withOpacity(0.1),
-                    ],
-                  ),
-                ),
-                if (showSecondLine)
-                  LineChartBarData(
-                    spots: spots2,
-                    isCurved: true,
-                    colors: [CupertinoColors.systemRed.withOpacity(0.8)],
-                    barWidth: 4,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                        radius: 4,
-                        color: CupertinoColors.systemRed.withOpacity(0.8),
-                        strokeWidth: 2,
-                        strokeColor: CupertinoColors.white,
-                      ),
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      colors: [
-                        CupertinoColors.systemRed.withOpacity(0.3),
-                        CupertinoColors.systemRed.withOpacity(0.1),
-                      ],
-                    ),
-                  ),
-              ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  double _getTimeIntervalSpots(List<FlSpot> spots) {
-    if (spots.length < 2) return 1;
-    final first = spots.first.x;
-    final last = spots.last.x;
-    return (last - first) / (spots.length - 1);
-  }
-
-  Widget _buildInfoSection() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Column(
-            children: [
-              Text(
-                'Latest',
-                style: TextStyle(
-                  color: CupertinoColors.secondaryLabel,
-                  fontSize: 14,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                '${_latestValue.toStringAsFixed(1)}',
-                style: TextStyle(
-                  color: CupertinoColors.label,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          Container(
-            width: 1,
-            height: 30,
-            color: CupertinoColors.systemGrey.withOpacity(0.2),
-          ),
-          Column(
-            children: [
-              Text(
-                'Average',
-                style: TextStyle(
-                  color: CupertinoColors.secondaryLabel,
-                  fontSize: 14,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                '${_averageValue.toStringAsFixed(1)}',
-                style: TextStyle(
-                  color: CupertinoColors.label,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+    
+    setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final metric = _metrics[_selectedIndex];
+    
     return CupertinoPageScaffold(
+      backgroundColor: CupertinoColors.systemGroupedBackground,
       navigationBar: CupertinoNavigationBar(
-        middle: Text(
-          AppLocalization.of(context).translate('history_page'),
-        ),
-        backgroundColor: CupertinoColors.systemGroupedBackground,
+        middle: Text('Lịch sử'),
       ),
       child: SafeArea(
         child: Column(
           children: [
-            _buildTimeFilter(),
-            SizedBox(height: 8),
-            _buildMetricSwitchBar(),
-            SizedBox(height: 12),
-            Expanded(
-              child: FutureBuilder(
-                future: _memoizer.runOnce(() async {}),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CupertinoActivityIndicator());
-                  }
-                  return _buildChart();
+            // Header card
+            Container(
+              margin: EdgeInsets.all(16),
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    metric['color'],
+                    (metric['color'] as Color).withOpacity(0.7),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: metric['color'].withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        _getIcon(_selectedIndex),
+                        color: CupertinoColors.white,
+                        size: 28,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        metric['title'],
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: CupertinoColors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildHeaderStat('TB', _avgValue, metric['unit']),
+                      _buildHeaderStat('Min', _minValue, metric['unit']),
+                      _buildHeaderStat('Max', _maxValue, metric['unit']),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            // Tab chọn
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: CupertinoSlidingSegmentedControl(
+                groupValue: _selectedIndex,
+                children: {
+                  0: _buildTab('❤️', 'HR'),
+                  1: _buildTab('🩸', 'BS'),
+                  2: _buildTab('💊', 'BP'),
+                  3: _buildTab('⚖️', 'BMI'),
+                },
+                onValueChanged: (value) {
+                  setState(() => _selectedIndex = value);
+                  _loadData();
                 },
               ),
             ),
-            _buildInfoSection(),
+            
+            SizedBox(height: 16),
+            
+            // Biểu đồ cột
+            Expanded(
+              child: _isLoading 
+                  ? Center(child: CupertinoActivityIndicator())
+                  : _barGroups.isEmpty 
+                      ? Center(child: Text('Chưa có dữ liệu', style: TextStyle(color: CupertinoColors.systemGrey)))
+                      : Padding(
+                          padding: EdgeInsets.all(16),
+                          child: BarChart(
+                            BarChartData(
+                              alignment: BarChartAlignment.spaceAround,
+                              maxY: _maxValue * 1.2,
+                              barGroups: _barGroups,
+                              titlesData: FlTitlesData(
+                                show: true,
+                                leftTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 35,
+                                  getTitles: (value) => 
+                                    value.toInt().toString(),
+                                ),
+                                bottomTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitles: (value) {
+                                    final idx = value.toInt();
+                                    if (idx >= 0 && idx < _dates.length) {
+                                      return _dates[idx];
+                                    }
+                                    return '';
+                                  },
+                                ),
+                                topTitles: SideTitles(showTitles: false),
+                                rightTitles: SideTitles(showTitles: false),
+                              ),
+                              gridData: FlGridData(
+                                show: true,
+                                horizontalInterval: (_maxValue * 1.2) / 5,
+                                getDrawingHorizontalLine: (value) => FlLine(
+                                  color: CupertinoColors.systemGrey.withOpacity(0.2),
+                                ),
+                              ),
+                              borderData: FlBorderData(show: false),
+                            ),
+                          ),
+                        ),
+            ),
           ],
         ),
       ),
     );
+  }
+  
+  Widget _buildTab(String emoji, String label) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Text(label, style: TextStyle(fontSize: 12)),
+    );
+  }
+  
+  Widget _buildHeaderStat(String label, double value, String unit) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: CupertinoColors.white.withOpacity(0.8),
+            fontSize: 12,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          '${value.toStringAsFixed(1)} $unit',
+          style: TextStyle(
+            color: CupertinoColors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  IconData _getIcon(int index) {
+    switch (index) {
+      case 0: return CupertinoIcons.heart_fill;
+      case 1: return CupertinoIcons.drop_fill;
+      case 2: return CupertinoIcons.bandage_fill;
+      case 3: return CupertinoIcons.person_fill;
+      default: return CupertinoIcons.chart_bar_fill;
+    }
   }
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:bp_notepad/screens/homeScreen.dart';
-import 'package:bp_notepad/screens/addScreen.dart';
+import 'package:bp_notepad/screens/homeScreen.dart' as home;
 import 'package:bp_notepad/screens/userScreen.dart';
-import 'package:bp_notepad/screens/trackingScreen.dart';
+import 'package:bp_notepad/screens/lifestyleScreen.dart';
+import 'package:bp_notepad/screens/FunctionScreen/healthTrackingScreen.dart';
 
 class MainScreen extends StatefulWidget {
   @override
@@ -14,16 +14,16 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
+    home.HomeScreen(),
     HomeScreen(),
-    AddScreen(),
     UserScreen(),
-    TrackingScreen(),
+    HealthTrackingScreen(),
   ];
 
   void _onTabSelected(int index) {
     setState(() {
       if (_currentIndex == 0 && index == 0) {
-        _screens[0] = HomeScreen();
+        _screens[0] = home.HomeScreen();
       }
       _currentIndex = index;
     });
@@ -54,7 +54,7 @@ class _MainScreenState extends State<MainScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(0, CupertinoIcons.house_fill, 'Home'),
-                _buildNavItem(1, CupertinoIcons.add_circled_solid, 'Add'),
+                _buildNavItem(1, CupertinoIcons.sparkles, 'Lifestyle'),
                 _buildNavItem(2, CupertinoIcons.person_fill, 'User'),
                 _buildNavItem(3, CupertinoIcons.chart_bar_alt_fill, 'Tracking'),
               ],

@@ -1,0 +1,21 @@
+analyzer:
+  enable-experiment:
+    - non-nullable
+  errors:
+    invalid_annotation_target: ignore
+    missing_default_value_for_parameter: ignore
+    not_initialized_non_nullable_instance_field: ignore
+    not_initialized_non_nullable_variable: ignore
+    invalid_assignment: ignore
+    argument_type_not_assignable: ignore
+    unchecked_use_of_nullable_value: ignore
+    body_might_complete_normally: ignore
+    return_of_invalid_type: ignore
+    not_assigned_potentially_non_nullable_local_variable: ignore
+    missing_required_argument: ignore
+    import_of_legacy_library_into_null_safe: ignore
+    unnecessary_non_null_assertion: ignore
+    list_element_type_not_assignable: ignore
+    experiment_not_enabled: ignore
+    invalid_null_aware_operator: ignore
+    missing_required_param: ignore

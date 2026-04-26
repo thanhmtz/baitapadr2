@@ -38,7 +38,7 @@ class _UserScreenState extends State<UserScreen> {
                 children: [
                   CircleAvatar(
                     radius: 35,
-                    backgroundImage: NetworkImage("https://i.imgur.com/BoN9kdC.png"),
+                    backgroundImage: AssetImage("assets/images/aboutMe.jpeg"),
                   ),
                   SizedBox(width: 16),
                   Column(

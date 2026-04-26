@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:bp_notepad/localization/appLocalization.dart';
-import 'package:bp_notepad/screens/FunctionScreen/bpScreen.dart';
+import 'package:bp_notepad/screens/FunctionScreen/bpTrackingScreen.dart';
 import 'package:bp_notepad/screens/FunctionScreen/bsScreen.dart';
 import 'package:bp_notepad/screens/FunctionScreen/bmiScreen.dart';
 import 'package:bp_notepad/screens/FunctionScreen/heartRateScreen.dart';
@@ -37,7 +37,7 @@ class FunctionScreen extends StatelessWidget {
                   color: CupertinoColors.systemRed,
                   title: 'Huyết áp',
                   subtitle: 'Đo & theo dõi',
-                  onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BloodPressure())),
+                  onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BpTrackingScreen())),
                 ),
                 _buildFuncCard(
                   context,

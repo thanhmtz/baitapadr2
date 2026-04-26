@@ -1,12 +1,6 @@
-/* 添加血压记录界面 */
-import 'package:bp_notepad/components/buttonButton.dart';
-import 'package:bp_notepad/components/resusableCard.dart';
-import 'package:bp_notepad/components/constants.dart';
-import 'package:bp_notepad/db/bp_databaseProvider.dart';
-import 'package:bp_notepad/localization/appLocalization.dart';
-import 'package:bp_notepad/screens/ResultScreen/bpResultScreen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:bp_notepad/db/bp_databaseProvider.dart';
 import 'package:bp_notepad/models/bpDBModel.dart';
 
 class BloodPressure extends StatefulWidget {
@@ -15,605 +9,365 @@ class BloodPressure extends StatefulWidget {
 }
 
 class _BloodPressureState extends State<BloodPressure> {
-  int _selectedSbp = 100;
-  int _selectedDbp = 75;
-  int _selectedHeartrate = 60;
-  int sbPressure = 100; //高压
-  int dbPressure = 75; //低压
-  int heartRate = 60;
+  int _selectedSbp = 120;
+  int _selectedDbp = 80;
+  int _selectedHr = 70;
+  int _sbp = 120;
+  int _dbp = 80;
+  int _hr = 70;
 
-  TextEditingController _voiceInputController;
-  String _voiceInput = '';
-
-  _pressureWarningDialog(BuildContext context) {
-    return showDialog<void>(
-        context: context,
-        barrierDismissible: false, // user must tap button!
-        builder: (BuildContext context) {
-          return CupertinoAlertDialog(
-            title: Text(
-              AppLocalization.of(context)
-                  .translate('bp_screen_PressureWarning'),
-            ),
-            actions: <Widget>[
-              CupertinoDialogAction(
-                child: Text(
-                  AppLocalization.of(context).translate('ok'),
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        });
+  String _getBpCategory() {
+    if (_sbp >= 180 || _dbp >= 120) return 'Hypertensive Crisis';
+    if (_sbp >= 140 || _dbp >= 90) return 'High Blood Pressure Stage 2';
+    if (_sbp >= 130 || _dbp >= 80) return 'High Blood Pressure Stage 1';
+    if (_sbp >= 120 && _dbp < 80) return 'Elevated';
+    if (_sbp >= 90 && _dbp < 60) return 'Low';
+    return 'Normal';
   }
 
-  _rangeWarningDialog(BuildContext context) {
-    return showDialog<void>(
-        context: context,
-        barrierDismissible: false, // user must tap button!
-        builder: (BuildContext context) {
-          return CupertinoAlertDialog(
-            title: Text(
-              AppLocalization.of(context).translate('bp_screen_RangeWarning'),
-            ),
-            actions: <Widget>[
-              CupertinoDialogAction(
-                child: Text(
-                  AppLocalization.of(context).translate('ok'),
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        });
-  }
-
-  List checkBP(String text) {
-    List<dynamic> bpData = [];
-    RegExp regExp = new RegExp(r'([0-9]{3}|[0-9]{2})');
-    Iterable<Match> matches = regExp.allMatches(text);
-    for (Match m in matches) {
-      int match = int.parse(m[0]);
-      bpData.add(match);
-    }
-    if (bpData.isEmpty) {
-      bpData.insert(0, false);
-      return bpData;
-    } else {
-      bpData.insert(0, true);
-      return bpData;
-    }
-  }
-
-  Widget _voiceInputTextField() {
-    return CupertinoTextField(
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(15.0)), //,
-      controller: _voiceInputController,
-      maxLines: 4,
-      placeholder:
-          AppLocalization.of(context).translate('bp_screen_textfield_title'),
-      onChanged: (String value) {
-        _voiceInput = value;
-      },
-    );
+  Color _getBpColor() {
+    if (_sbp >= 180 || _dbp >= 120) return Color(0xFFB71C1C);
+    if (_sbp >= 140 || _dbp >= 90) return Color(0xFFEF5350);
+    if (_sbp >= 130 || _dbp >= 80) return Color(0xFFFF9800);
+    if (_sbp >= 120 && _dbp < 80) return Color(0xFFFFEB3B);
+    if (_sbp >= 90 || _dbp < 60) return Color(0xFF2196F3);
+    return Color(0xFF4CAF50);
   }
 
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemGroupedBackground,
+      backgroundColor: Color(0xFFF5F7FA),
       navigationBar: CupertinoNavigationBar(
+        backgroundColor: CupertinoColors.white,
+        border: null,
         middle: Text(
-          AppLocalization.of(context).translate('input_statistics'),
+          'Blood Pressure',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF4CAF50),
+          ),
         ),
-        trailing: CupertinoButton(
+        leading: CupertinoButton(
           padding: EdgeInsets.zero,
-          child: Icon(CupertinoIcons.question_circle),
-          onPressed: () {
-            showDialog<void>(
-                context: context,
-                barrierDismissible: false, // user must tap button!
-                builder: (BuildContext context) {
-                  return CupertinoAlertDialog(
-                    title: Text(
-                      AppLocalization.of(context)
-                          .translate('bp_screen_helper_title'),
-                    ),
-                    content: Text(AppLocalization.of(context)
-                        .translate('bp_screen_helper_content')),
-                    actions: <Widget>[
-                      CupertinoDialogAction(
-                        child: Text(
-                          AppLocalization.of(context).translate('ok'),
-                        ),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    ],
-                  );
-                });
-          },
+          child: Icon(CupertinoIcons.back, color: Color(0xFF4CAF50)),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(5.0),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: double.infinity),
-            child: Column(
-              children: <Widget>[
-                Container(
-                  child: ReusableCard(
-                    cardChild: _voiceInputTextField(),
-                    color:
-                        CupertinoDynamicColor.resolve(backGroundColor, context),
-                  ),
+          padding: EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildMainCard(),
+              SizedBox(height: 20),
+              _buildInputCard(
+                'Systolic (mmHg)',
+                _sbp,
+                70,
+                200,
+                (val) => setState(() => _sbp = val),
+                Color(0xFFFF5252),
+              ),
+              SizedBox(height: 12),
+              _buildInputCard(
+                'Diastolic (mmHg)',
+                _dbp,
+                40,
+                130,
+                (val) => setState(() => _dbp = val),
+                Color(0xFF4CAF50),
+              ),
+              SizedBox(height: 12),
+              _buildInputCard(
+                'Pulse (bpm)',
+                _hr,
+                40,
+                150,
+                (val) => setState(() => _hr = val),
+                Color(0xFFFF9800),
+              ),
+              SizedBox(height: 24),
+              _buildSaveButton(),
+              SizedBox(height: 12),
+              _buildReferenceTable(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainCard() {
+    return Container(
+      padding: EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_getBpColor(), _getBpColor().withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: _getBpColor().withOpacity(0.4),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            '$_sbp / $_dbp',
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              color: CupertinoColors.white,
+            ),
+          ),
+          Text(
+            'mmHg',
+            style: TextStyle(
+              fontSize: 16,
+              color: CupertinoColors.white.withOpacity(0.8),
+            ),
+          ),
+          SizedBox(height: 16),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _getBpCategory(),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: CupertinoColors.white,
+              ),
+            ),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'Pulse: $_hr bpm',
+            style: TextStyle(
+              fontSize: 14,
+              color: CupertinoColors.white.withOpacity(0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputCard(String label, int value, int min, int max, Function onChanged, Color color) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: CupertinoColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.08),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: CupertinoColors.systemGrey,
                 ),
-                Container(
-                  child: ReusableCard(
-                    onPressed: () {
-                      showModalBottomSheet(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return Container(
-                              height: 350.0,
-                              color: CupertinoDynamicColor.resolve(
-                                  backGroundColor, context),
-                              child: Column(
-                                children: <Widget>[
-                                  Container(
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: <Widget>[
-                                        CupertinoButton(
-                                          child: Text(
-                                              AppLocalization.of(context)
-                                                  .translate('cancel')),
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                        CupertinoButton(
-                                          child: Text(
-                                              AppLocalization.of(context)
-                                                  .translate('done')),
-                                          onPressed: () {
-                                            setState(() {
-                                              sbPressure = _selectedSbp;
-                                              Navigator.of(context).pop();
-                                            });
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Divider(
-                                    height: 0,
-                                    thickness: 1,
-                                  ),
-                                  Expanded(
-                                    child: CupertinoPicker(
-                                        scrollController:
-                                            new FixedExtentScrollController(
-                                                initialItem: sbPressure),
-                                        itemExtent: 45.0,
-                                        backgroundColor:
-                                            CupertinoDynamicColor.resolve(
-                                                backGroundColor, context),
-                                        onSelectedItemChanged: (int index) {
-                                          _selectedSbp = index;
-                                        },
-                                        children: new List<Widget>.generate(221,
-                                            (int index) {
-                                          return new Center(
-                                            child: new Text(
-                                              '$index',
-                                              style:
-                                                  TextStyle(color: kDarkColour),
-                                            ),
-                                          );
-                                        })),
-                                  ),
-                                ],
-                              ),
-                            );
-                          });
-                    },
-                    color:
-                        CupertinoDynamicColor.resolve(backGroundColor, context),
-                    cardChild: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        Text(
-                          AppLocalization.of(context).translate('sbp'),
-                          style: kLabelTextStyle,
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: <Widget>[
-                            Text(
-                              sbPressure.toString(),
-                              style: kNumberTextStyle,
-                            ),
-                            Text(
-                              'mmHg',
-                              style: kNumberTextStyle,
-                            )
-                          ],
-                        ),
-                        Text(
-                          AppLocalization.of(context).translate('tap_toset'),
-                          style: kLabelTextStyle,
-                        ),
-                      ],
-                    ),
-                  ),
+              ),
+              Text(
+                '$value',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: color,
                 ),
-                Container(
-                  child: ReusableCard(
-                    onPressed: () {
-                      showModalBottomSheet(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return Container(
-                              height: 350.0,
-                              color: CupertinoDynamicColor.resolve(
-                                  backGroundColor, context),
-                              child: Column(
-                                children: <Widget>[
-                                  Container(
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: <Widget>[
-                                        CupertinoButton(
-                                          child: Text(
-                                              AppLocalization.of(context)
-                                                  .translate('cancel')),
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                        CupertinoButton(
-                                          child: Text(
-                                              AppLocalization.of(context)
-                                                  .translate('done')),
-                                          onPressed: () {
-                                            setState(() {
-                                              dbPressure = _selectedDbp;
-                                              Navigator.of(context).pop();
-                                            });
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Divider(
-                                    height: 0,
-                                    thickness: 1,
-                                  ),
-                                  Expanded(
-                                    child: CupertinoPicker(
-                                        scrollController:
-                                            new FixedExtentScrollController(
-                                                initialItem: dbPressure),
-                                        itemExtent: 45.0,
-                                        backgroundColor:
-                                            CupertinoDynamicColor.resolve(
-                                                backGroundColor, context),
-                                        onSelectedItemChanged: (int index) {
-                                          _selectedDbp = index;
-                                        },
-                                        children: new List<Widget>.generate(161,
-                                            (int index) {
-                                          return new Center(
-                                            child: new Text(
-                                              '$index',
-                                              style:
-                                                  TextStyle(color: kDarkColour),
-                                            ),
-                                          );
-                                        })),
-                                  ),
-                                ],
-                              ),
-                            );
-                          });
-                    },
-                    color:
-                        CupertinoDynamicColor.resolve(backGroundColor, context),
-                    cardChild: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        Text(
-                          AppLocalization.of(context).translate('dbp'),
-                          style: kLabelTextStyle,
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: <Widget>[
-                            Text(
-                              dbPressure.toString(),
-                              style: kNumberTextStyle,
-                            ),
-                            Text(
-                              'mmHg',
-                              style: kNumberTextStyle,
-                            )
-                          ],
-                        ),
-                        Text(
-                          AppLocalization.of(context).translate('tap_toset'),
-                          style: kLabelTextStyle,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Container(
-                  child: ReusableCard(
-                    onPressed: () {
-                      showModalBottomSheet(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return Container(
-                              height: 350.0,
-                              color: CupertinoDynamicColor.resolve(
-                                  backGroundColor, context),
-                              child: Column(
-                                children: <Widget>[
-                                  Container(
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: <Widget>[
-                                        CupertinoButton(
-                                          child: Text(
-                                              AppLocalization.of(context)
-                                                  .translate('cancel')),
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                        CupertinoButton(
-                                          child: Text(
-                                              AppLocalization.of(context)
-                                                  .translate('done')),
-                                          onPressed: () {
-                                            setState(() {
-                                              heartRate = _selectedHeartrate;
-                                              Navigator.of(context).pop();
-                                            });
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Divider(
-                                    height: 0,
-                                    thickness: 1,
-                                  ),
-                                  Expanded(
-                                    child: CupertinoPicker(
-                                        scrollController:
-                                            new FixedExtentScrollController(
-                                                initialItem: heartRate),
-                                        itemExtent: 45.0,
-                                        backgroundColor:
-                                            CupertinoDynamicColor.resolve(
-                                                backGroundColor, context),
-                                        onSelectedItemChanged: (int index) {
-                                          _selectedHeartrate = index;
-                                        },
-                                        children: new List<Widget>.generate(241,
-                                            (int index) {
-                                          return new Center(
-                                            child: new Text(
-                                              '$index',
-                                              style:
-                                                  TextStyle(color: kDarkColour),
-                                            ),
-                                          );
-                                        })),
-                                  ),
-                                ],
-                              ),
-                            );
-                          });
-                    },
-                    color:
-                        CupertinoDynamicColor.resolve(backGroundColor, context),
-                    cardChild: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        Text(
-                          AppLocalization.of(context).translate('heart_rate'),
-                          style: kLabelTextStyle,
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: <Widget>[
-                            Text(
-                              heartRate.toString(),
-                              style: kNumberTextStyle,
-                            ),
-                            Text(
-                              AppLocalization.of(context)
-                                  .translate('heart_rate_subtittle'),
-                              style: kNumberTextStyle,
-                            )
-                          ],
-                        ),
-                        Text(
-                          AppLocalization.of(context).translate('tap_toset'),
-                          style: kLabelTextStyle,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                ButtonButton(
-                  onTap: () {
-                    if (_voiceInput != "") {
-                      print(_voiceInput);
-                      List bpList = checkBP(_voiceInput);
-                      print(bpList);
-                      if (bpList[0] == true && bpList.length == 4) {
-                        // 匹配成功 有心率信息
-                        if (bpList[1] <= 220 &&
-                            bpList[1] > 0 &&
-                            bpList[2] <= 160 &&
-                            bpList[2] > 0) {
-                          if (bpList[1] > bpList[2]) {
-                            var date = new DateTime.now().toLocal();
-                            String time =
-                                "${date.year.toString()}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-                            // 写入数据库
-                            BloodPressureDB bloodPressureDB = BloodPressureDB(
-                                sbp: bpList[1],
-                                dbp: bpList[2],
-                                hr: bpList[3],
-                                date: time);
-                            BpDataBaseProvider.db.insert(bloodPressureDB);
-                            
-                            showCupertinoDialog(
-                              context: context,
-                              builder: (_) => CupertinoAlertDialog(
-                                title: Text('Đã lưu'),
-                                content: Text('Huyết áp ${bpList[1]}/${bpList[2]} mmHg đã được lưu.'),
-                                actions: [
-                                  CupertinoDialogAction(
-                                    child: Text('OK'),
-                                    onPressed: () => Navigator.pop(context),
-                                  ),
-                                ],
-                              ),
-                            );
-                            Navigator.pop(context);
-                          } else {
-                            _pressureWarningDialog(context);
-                          }
-                        } else {
-                          _rangeWarningDialog(context);
-                        }
-                      } else if (bpList[0] == true && bpList.length == 3) {
-                        // 匹配成功 无心率信息
-                        if (bpList[1] <= 220 &&
-                            bpList[1] > 0 &&
-                            bpList[2] <= 160 &&
-                            bpList[2] > 0) {
-                          if (bpList[1] > bpList[2]) {
-                            var date = new DateTime.now().toLocal();
-                            String time =
-                                "${date.year.toString()}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-                            // 写入数据库
-                            BloodPressureDB bloodPressureDB = BloodPressureDB(
-                                sbp: bpList[1],
-                                dbp: bpList[2],
-                                hr: 60,
-                                date: time);
-                            BpDataBaseProvider.db.insert(bloodPressureDB);
-                            
-                            showCupertinoDialog(
-                              context: context,
-                              builder: (_) => CupertinoAlertDialog(
-                                title: Text('Đã lưu'),
-                                content: Text('Huyết áp ${bpList[1]}/${bpList[2]} mmHg đã được lưu.'),
-                                actions: [
-                                  CupertinoDialogAction(
-                                    child: Text('OK'),
-                                    onPressed: () => Navigator.pop(context),
-                                  ),
-                                ],
-                              ),
-                            );
-                            Navigator.pop(context);
-                          } else {
-                            _pressureWarningDialog(context);
-                          }
-                        } else {
-                          _rangeWarningDialog(context);
-                        }
-                      } else {
-                        // 匹配失败
-                        return showDialog<void>(
-                            context: context,
-                            barrierDismissible: false, // user must tap button!
-                            builder: (BuildContext context) {
-                              return CupertinoAlertDialog(
-                                title: Text(
-                                  AppLocalization.of(context).translate(
-                                      'bp_screen_voice_failed_title'),
-                                ),
-                                content: Text(AppLocalization.of(context)
-                                    .translate(
-                                        'bp_screen_voice_failed_content')),
-                                actions: <Widget>[
-                                  CupertinoDialogAction(
-                                    child: Text(
-                                      AppLocalization.of(context)
-                                          .translate('ok'),
-                                    ),
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                  ),
-                                ],
-                              );
-                            });
-                      }
-                    } else {
-                      if (sbPressure > dbPressure) {
-                        var date = new DateTime.now().toLocal();
-                        String time =
-                            "${date.year.toString()}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-                        BloodPressureDB bloodPressureDB = BloodPressureDB(
-                            sbp: sbPressure,
-                            dbp: dbPressure,
-                            hr: heartRate,
-                            date: time);
-                        BpDataBaseProvider.db.insert(bloodPressureDB);
-                        
-                        showCupertinoDialog(
-                          context: context,
-                          builder: (_) => CupertinoAlertDialog(
-                            title: Text('Đã lưu'),
-                            content: Text('Huyết áp $sbPressure/$dbPressure mmHg đã được lưu.'),
-                            actions: [
-                              CupertinoDialogAction(
-                                child: Text('OK'),
-                                onPressed: () => Navigator.pop(context),
-                              ),
-                            ],
-                          ),
-                        );
-                        Navigator.pop(context);
-                      } else {
-                        _pressureWarningDialog(context);
-                      }
-                    }
-                  },
-                  buttonTitle: AppLocalization.of(context).translate('submit'),
-                ),
-                const SizedBox(
-                  height: 4,
-                ),
-              ],
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: color,
+              inactiveTrackColor: color.withOpacity(0.2),
+              thumbColor: color,
+              overlayColor: color.withOpacity(0.1),
+              trackHeight: 6,
+              thumbShape: RoundSliderThumbShape(enabledThumbRadius: 10),
+            ),
+            child: Slider(
+              value: value.toDouble(),
+              min: min.toDouble(),
+              max: max.toDouble(),
+              onChanged: (val) => onChanged(val.round()),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('$min', style: TextStyle(fontSize: 12, color: CupertinoColors.systemGrey3)),
+              Text('$max', style: TextStyle(fontSize: 12, color: CupertinoColors.systemGrey3)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return GestureDetector(
+      onTap: _saveBloodPressure,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFF4CAF50).withOpacity(0.4),
+              blurRadius: 16,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            'Save',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: CupertinoColors.white,
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildReferenceTable() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: CupertinoColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.08),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Blood Pressure Categories',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: CupertinoColors.label,
+            ),
+          ),
+          SizedBox(height: 12),
+          _buildRefRow('Normal', '< 120', 'and', '< 80', Color(0xFF4CAF50)),
+          _buildRefRow('Elevated', '120-129', 'and', '< 80', Color(0xFFFFEB3B)),
+          _buildRefRow('High BP Stage 1', '130-139', 'or', '80-89', Color(0xFFFF9800)),
+          _buildRefRow('High BP Stage 2', '≥ 140', 'or', '≥ 90', Color(0xFFEF5350)),
+          _buildRefRow('Hypertensive Crisis', '> 180', 'or', '> 120', Color(0xFFB71C1C)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRefRow(String category, String sbp, String and, String dbp, Color color) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: Text(category, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(sbp, style: TextStyle(fontSize: 14), textAlign: TextAlign.center),
+          ),
+          SizedBox(width: 4),
+          Text(and, style: TextStyle(fontSize: 12, color: CupertinoColors.systemGrey)),
+          SizedBox(width: 4),
+          Expanded(
+            flex: 2,
+            child: Text(dbp, style: TextStyle(fontSize: 14), textAlign: TextAlign.center),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveBloodPressure() async {
+    if (_sbp <= _dbp) {
+      showCupertinoDialog(
+        context: context,
+        builder: (_) => CupertinoAlertDialog(
+          title: Text('Error'),
+          content: Text('Systolic must be greater than Diastolic'),
+          actions: [
+            CupertinoDialogAction(
+              child: Text('OK'),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    var date = DateTime.now();
+    String time = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+    BloodPressureDB bp = BloodPressureDB(sbp: _sbp, dbp: _dbp, hr: _hr, date: time);
+    await BpDataBaseProvider.db.insert(bp);
+
+    showCupertinoDialog(
+      context: context,
+      builder: (_) => CupertinoAlertDialog(
+        title: Text('Saved'),
+        content: Text('Blood pressure $_sbp/$_dbp mmHg saved'),
+        actions: [
+          CupertinoDialogAction(
+            child: Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
       ),
     );
   }
