@@ -7,17 +7,41 @@ import 'package:bp_notepad/screens/FunctionScreen/heartRateScreen.dart';
 import 'package:bp_notepad/screens/FunctionScreen/sleepScreen.dart';
 import 'package:bp_notepad/screens/FunctionScreen/activityScreen.dart';
 import 'package:bp_notepad/screens/FunctionScreen/nutritionScreen.dart';
+import 'package:bp_notepad/screens/FunctionScreen/waterReminderScreen.dart';
+import 'package:bp_notepad/theme.dart';
 
-class AddScreen extends StatelessWidget {
+class AddScreen extends StatefulWidget {
+  @override
+  _AddScreenState createState() => _AddScreenState();
+}
+
+class _AddScreenState extends State<AddScreen> {
+  @override
+  void initState() {
+    super.initState();
+    isDarkModeGlobal.addListener(_onDarkModeChanged);
+  }
+
+  void _onDarkModeChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    isDarkModeGlobal.removeListener(_onDarkModeChanged);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = isDarkMode;
     return Scaffold(
-      backgroundColor: CupertinoColors.systemGroupedBackground,
+      backgroundColor: AppTheme.background(),
       body: CustomScrollView(
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text('Thêm mới'),
-            backgroundColor: CupertinoColors.systemGroupedBackground,
+            largeTitle: Text('Thêm mới', style: TextStyle(color: AppTheme.textPrimary())),
+            backgroundColor: AppTheme.background(),
             border: null,
           ),
           SliverToBoxAdapter(
@@ -129,6 +153,21 @@ class AddScreen extends StatelessWidget {
                         color: CupertinoColors.activeGreen,
                         onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => NutritionScreen())),
                       ),
+                    ],
+                  ),
+                  SizedBox(height: 24),
+                  _buildCategorySection(
+                    context,
+                    title: 'Giữ gìn sức khỏe',
+                    icon: CupertinoIcons.drop_fill,
+                    color: CupertinoColors.systemTeal,
+                    items: [
+                      _CategoryItem(
+                        icon: CupertinoIcons.drop_fill,
+                        title: 'Nhắc uống nước',
+                        subtitle: 'Theo dõi lượng nước',
+                        color: CupertinoColors.systemTeal,
+                        onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => WaterReminderScreen()))),
                     ],
                   ),
                   SizedBox(height: 40),

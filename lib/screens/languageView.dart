@@ -24,9 +24,7 @@ class _LanguageViewState extends State<LanguageView> {
     final languages = Language.languageList();
 
     return CupertinoPageScaffold(
-      backgroundColor:
-      CupertinoDynamicColor.resolve(backGroundColor, context),
-
+      backgroundColor: AppTheme.surface(),
       navigationBar: CupertinoNavigationBar(
         middle: Text(
           AppLocalization.of(context).translate('language'),

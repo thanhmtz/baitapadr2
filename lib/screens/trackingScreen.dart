@@ -6,6 +6,7 @@ import 'package:bp_notepad/components/lineChart3.dart';
 import 'package:bp_notepad/components/lineChart4.dart';
 import 'package:bp_notepad/components/lineChart5.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:bp_notepad/theme.dart';
 
 class TrackingScreen extends StatefulWidget {
   @override
@@ -26,12 +27,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CupertinoColors.systemGroupedBackground,
+      backgroundColor: AppTheme.background(),
       body: CustomScrollView(
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text('Theo dõi'),
-            backgroundColor: CupertinoColors.systemGroupedBackground,
+            largeTitle: Text('Theo dõi', style: TextStyle(color: AppTheme.textPrimary())),
+            backgroundColor: AppTheme.background(),
             border: null,
           ),
           SliverToBoxAdapter(

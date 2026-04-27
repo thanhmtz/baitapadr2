@@ -6,7 +6,7 @@
       "name": "Beeknoee",
       "options": {
         "baseURL": "https://platform.beeknoee.com/api/v1",
-        "apiKey": "{env:sk-bee-1f2b61cfc3b7415794bfed3f40921b6b}"
+        "apiKey": "{env:}"
       },
       "models": {
         "deepseek-chat": {

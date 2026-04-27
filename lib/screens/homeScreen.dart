@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show LinearProgressIndicator, RefreshIndicator, Scaffold, CircularProgressIndicator;
+import 'package:flutter/material.dart'
+    show LinearProgressIndicator, RefreshIndicator, Scaffold, CircularProgressIndicator, Colors;
+import 'package:flutter/material.dart' show required;
 import 'package:bp_notepad/db/nutrition_databaseProvider.dart';
 import 'package:bp_notepad/db/bp_databaseProvider.dart';
 import 'package:bp_notepad/db/bs_databaseProvider.dart';
@@ -14,6 +16,8 @@ import 'package:bp_notepad/models/hrDBModel.dart';
 import 'package:bp_notepad/models/sleepDBModel.dart';
 import 'package:bp_notepad/screens/userScreen.dart';
 import 'package:bp_notepad/screens/addScreen.dart';
+import 'package:bp_notepad/theme.dart';
+import 'package:bp_notepad/screens/FunctionScreen/aiDoctorScreen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -29,31 +33,41 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _mealCount = 0;
   int _reminderCount = 0;
   int _steps = 0;
-  
+
   BloodPressureDB _latestBP;
   BloodSugarDB _latestBS;
   BodyDB _latestBMI;
   int _latestHR;
   double _latestSleep;
 
+  // Color
+  static const Color _primaryGreen = Color(0xFF00BFA5);
+  static const Color _bpRed = Color(0xFFFF5252);
+  static const Color _bsBlue = Color(0xFF448AFF);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadData();
+    
+    isDarkModeGlobal.addListener(_onDarkModeChanged);
+  }
+
+  void _onDarkModeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    isDarkModeGlobal.removeListener(_onDarkModeChanged);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _loadData();
-    }
+    if (state == AppLifecycleState.resumed) _loadData();
   }
 
   Future<void> _loadData() async {
@@ -105,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       latestSleepData = sleepList.first;
     }
 
-    int activeReminders = alarmList.where((alarm) => alarm.state == '1').length;
+    int activeReminders = alarmList.where((a) => a.state == '1').length;
 
     setState(() {
       _totalCalories = totalC;
@@ -126,245 +140,77 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = isDarkMode;
     return Scaffold(
-      backgroundColor: CupertinoColors.systemGroupedBackground,
+      backgroundColor: AppTheme.background(),
       body: _isLoading
-          ? Center(child: CupertinoActivityIndicator())
+          ? Center(child: CircularProgressIndicator(
+              color: isDark ? Colors.white : _primaryGreen,
+            ))
           : RefreshIndicator(
-              onRefresh: _loadData,
-              color: CupertinoColors.activeGreen,
-              child: CustomScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  _buildHeader(),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildNutritionCard(),
-                          SizedBox(height: 24),
-                          _buildQuickAddSection(),
-                          SizedBox(height: 24),
-                          _buildHealthMetricsSection(),
-                          SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return CupertinoSliverNavigationBar(
-      largeTitle: Text('Health'),
-      backgroundColor: CupertinoColors.systemGroupedBackground.withOpacity(0.9),
-      border: null,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CupertinoButton(
-            padding: EdgeInsets.zero,
-            child: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: CupertinoColors.activeGreen.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(CupertinoIcons.person_fill, color: CupertinoColors.activeGreen, size: 22),
-            ),
-            onPressed: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => UserScreen())),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNutritionCard() {
-    double progress = (_totalCalories / 2000).clamp(0.0, 1.0);
-    double remaining = 2000 - _totalCalories;
-    
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFF34C759),
-            Color(0xFF30D158),
-            Color(0xFF28CD41),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xFF34C759).withOpacity(0.4),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
+        onRefresh: _loadData,
+        color: _primaryGreen,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            _buildAppBar(),
+            SliverToBoxAdapter(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(CupertinoIcons.flame_fill, color: CupertinoColors.white, size: 20),
-                      SizedBox(width: 6),
-                      Text(
-                        'Calories',
-                        style: TextStyle(
-                          color: CupertinoColors.white.withOpacity(0.9),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        _totalCalories.toStringAsFixed(0),
-                        style: TextStyle(
-                          color: CupertinoColors.white,
-                          fontSize: 42,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: -1,
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 6),
-                        child: Text(
-                          '/ 2000',
-                          style: TextStyle(
-                            color: CupertinoColors.white.withOpacity(0.7),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 4),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: CupertinoColors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      remaining > 0 ? '${remaining.toStringAsFixed(0)} kcal còn lại' : 'Đã đạt mục tiêu!',
-                      style: TextStyle(
-                        color: CupertinoColors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+                  _buildHeroBanner(),
+                  const SizedBox(height: 20),
+                  _buildSectionHeader('Nhật ký sức khỏe'),
+                  const SizedBox(height: 12),
+                  _buildHealthJournalGrid(),
+                  const SizedBox(height: 20),
+                  _buildSectionHeader('Tính năng khác'),
+                  const SizedBox(height: 12),
+                  _buildExtraFeatures(),
+                  const SizedBox(height: 30),
                 ],
               ),
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 90,
-                    height: 90,
-                    child: CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 8,
-                      backgroundColor: CupertinoColors.white.withOpacity(0.25),
-                      valueColor: AlwaysStoppedAnimation(CupertinoColors.white),
-                    ),
-                  ),
-                  Column(
-                    children: [
-                      Text(
-                        '${(progress * 100).toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          color: CupertinoColors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Hoàn thành',
-                        style: TextStyle(
-                          color: CupertinoColors.white.withOpacity(0.8),
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: 20),
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: CupertinoColors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(16),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildMacroItem('Protein', _totalProtein, 50, CupertinoIcons.bolt_fill),
-                _buildDivider(),
-                _buildMacroItem('Carbs', _totalCarbs, 250, CupertinoIcons.circle_fill),
-                _buildDivider(),
-                _buildMacroItem('Fat', _totalFat, 65, CupertinoIcons.drop_fill),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMacroItem(String label, double value, double target, IconData icon) {
-    double progress = target > 0 ? (value / target).clamp(0.0, 1.0) : 0.0;
-    
-    return Expanded(
-      child: Column(
-        children: [
-          Icon(icon, color: CupertinoColors.white, size: 18),
-          SizedBox(height: 6),
+  // ── App Bar ──────────────────────────────────────────────────────────────────
+  Widget _buildAppBar() {
+    return CupertinoSliverNavigationBar(
+      largeTitle: Text(
+        'theo dõi',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: AppTheme.textPrimary(),
+        ),
+      ),
+      backgroundColor: AppTheme.background().withOpacity(0.95),
+      border: null,
+      trailing: _buildWeatherBadge(),
+    );
+  }
+
+  Widget _buildWeatherBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: _primaryGreen,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(CupertinoIcons.cloud_fill, color: CupertinoColors.white, size: 14),
+          SizedBox(width: 4),
           Text(
-            '${value.toStringAsFixed(0)}g',
+            '26°C',
             style: TextStyle(
               color: CupertinoColors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            '/ ${target.toStringAsFixed(0)}g',
-            style: TextStyle(
-              color: CupertinoColors.white.withOpacity(0.7),
-              fontSize: 10,
-            ),
-          ),
-          SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: CupertinoColors.white.withOpacity(0.25),
-              valueColor: AlwaysStoppedAnimation(CupertinoColors.white),
-              minHeight: 4,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -372,65 +218,378 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildDivider() {
-    return Container(
-      height: 50,
-      width: 1,
-      color: CupertinoColors.white.withOpacity(0.3),
+  // ── Hero Banner (green card) ─────────────────────────────────────────────────
+  Widget _buildHeroBanner() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        height: 130,
+        decoration: BoxDecoration(
+          color: _primaryGreen,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: Stack(
+          children: [
+            // Decorative circle
+            Positioned(
+              left: -20,
+              bottom: -30,
+              child: Container(
+                width: 130,
+                height: 130,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 20,
+              bottom: -10,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+            ),
+            // Heart + fingerprint icon area
+            Positioned(
+              left: 16,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.heart_fill,
+                    color: CupertinoColors.white,
+                    size: 34,
+                  ),
+                ),
+              ),
+            ),
+            // Measure now button
+            Positioned(
+              right: 16,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: () => _navigateToAdd(0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.white,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Text(
+                          'Đo ngay',
+                          style: TextStyle(
+                            color: _primaryGreen,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(CupertinoIcons.arrow_right, color: _primaryGreen, size: 14),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Bottom row
+            Positioned(
+              bottom: 14,
+              left: 16,
+              right: 16,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(CupertinoIcons.doc_text, color: CupertinoColors.white, size: 13),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Báo cáo cuối cùng: ${_latestBP != null ? '${_latestBP.sbp}/${_latestBP.dbp}' : '--'}',
+                        style: TextStyle(
+                          color: CupertinoColors.white.withOpacity(0.85),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () {},
+                    child: Row(
+                      children: [
+                        Text(
+                          'Lịch sử',
+                          style: TextStyle(
+                            color: CupertinoColors.white.withOpacity(0.85),
+                            fontSize: 12,
+                          ),
+                        ),
+                        Icon(CupertinoIcons.chevron_right,
+                            color: CupertinoColors.white.withOpacity(0.85), size: 12),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildQuickAddSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Thêm nhanh',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: CupertinoColors.label,
+  // ── Section Header ───────────────────────────────────────────────────────────
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          const Icon(CupertinoIcons.book_fill, color: _primaryGreen, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary(),
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // ── Health Journal Grid (2 columns) ─────────────────────────────────────────
+  Widget _buildHealthJournalGrid() {
+    final items = [
+      _JournalItem(
+        title: 'Huyết áp',
+        value: _latestBP != null ? '${_latestBP.sbp}/${_latestBP.dbp}' : '--/--',
+        unit: 'mmHg',
+        valueColor: _bpRed,
+        bgColor: const Color(0xFFFFF0EF),
+        icon: 'assets/icons/bp.png', // replace with actual asset
+        onTap: () => _navigateToAdd(0),
+        fallbackIcon: CupertinoIcons.heart_fill,
+        iconColor: _bpRed,
+      ),
+      _JournalItem(
+        title: 'Đường huyết',
+        value: _latestBS != null ? _latestBS.glu.toStringAsFixed(1) : '--',
+        unit: 'mmol/L',
+        valueColor: const Color(0xFFFF9500),
+        bgColor: const Color(0xFFFFF8EC),
+        onTap: () => _navigateToAdd(1),
+        fallbackIcon: CupertinoIcons.drop_fill,
+        iconColor: const Color(0xFFFF9500),
+      ),
+      _JournalItem(
+        title: 'Cân nặng & chỉ số BMI',
+        value: _latestBMI != null ? '${_latestBMI.weight}' : '--',
+        unit: 'KG',
+        valueColor: _bsBlue,
+        bgColor: const Color(0xFFEEF4FF),
+        onTap: () => _navigateToAdd(2),
+        fallbackIcon: CupertinoIcons.person_fill,
+        iconColor: _bsBlue,
+      ),
+      _JournalItem(
+        title: 'Nhắc nhở uống nước.',
+        value: '600',
+        unit: '/2000ml',
+        valueColor: _primaryGreen,
+        bgColor: const Color(0xFFEDF7F0),
+        onTap: () {},
+        fallbackIcon: CupertinoIcons.drop,
+        iconColor: _primaryGreen,
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.95,
         ),
-        SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _buildQuickAddButton(
-                icon: CupertinoIcons.chart_bar_fill,
-                label: 'Dinh dưỡng',
-                color: CupertinoColors.activeGreen,
-                onTap: () => _navigateToAdd(6),
+        itemCount: items.length,
+        itemBuilder: (context, i) => _buildJournalCard(items[i]),
+      ),
+    );
+  }
+
+  Widget _buildJournalCard(_JournalItem item) {
+    return GestureDetector(
+      onTap: item.onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: item.bgColor,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary(),
               ),
-              _buildQuickAddButton(
-                icon: CupertinoIcons.heart_fill,
-                label: 'Huyết áp',
-                color: CupertinoColors.systemRed,
-                onTap: () => _navigateToAdd(0),
+              maxLines: 2,
+            ),
+            const Spacer(),
+            // Icon/illustration area
+            Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: item.iconColor.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(item.fallbackIcon, color: item.iconColor, size: 26),
               ),
-              _buildQuickAddButton(
-                icon: CupertinoIcons.drop_fill,
-                label: 'Đường huyết',
-                color: CupertinoColors.systemGreen,
-                onTap: () => _navigateToAdd(1),
-              ),
-              _buildQuickAddButton(
-                icon: CupertinoIcons.person_fill,
-                label: 'BMI',
-                color: CupertinoColors.systemBlue,
-                onTap: () => _navigateToAdd(2),
-              ),
-              _buildQuickAddButton(
-                icon: CupertinoIcons.waveform_path_ecg,
-                label: 'Nhịp tim',
-                color: CupertinoColors.systemPink,
-                onTap: () => _navigateToAdd(3),
-              ),
-            ],
+            ),
+            const SizedBox(height: 8),
+            // Value row
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  item.value,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: item.valueColor,
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    item.unit,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: item.valueColor.withOpacity(0.75),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Extra Features (AI Doctor, Food Scanner) ─────────────────────────────────
+  Widget _buildExtraFeatures() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.2,
+        children: [
+          _buildFeatureCard(
+            title: 'bác sĩ AI',
+            bgColor: const Color(0xFFFFF0F5),
+            iconColor: const Color(0xFFFF2D55),
+            icon: CupertinoIcons.person_crop_circle_fill,
+            onTap: () => _openAiDoctor(),
           ),
+          _buildFeatureCard(
+            title: 'Máy quét thực phẩm',
+            bgColor: const Color(0xFFFFF8EC),
+            iconColor: const Color(0xFFFF9500),
+            icon: CupertinoIcons.barcode_viewfinder,
+            onTap: () {},
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openAiDoctor() {
+    Navigator.push(
+      context,
+      CupertinoPageRoute(
+        builder: (context) => AiDoctorScreen(),
+      ),
+    );
+  }
+
+  Widget _buildFeatureCard({
+    String title,
+    Color bgColor,
+    Color iconColor,
+    IconData icon,
+    VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(18),
         ),
-      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary(),
+              ),
+            ),
+            const Spacer(),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 26),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -438,238 +597,37 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Navigator.push(context, CupertinoPageRoute(builder: (_) => AddScreen()));
   }
 
-  Widget _buildQuickAddButton({
-    IconData icon,
-    String label,
-    Color color,
-    VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 80,
-        margin: EdgeInsets.only(right: 12),
-        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        decoration: BoxDecoration(
-          color: CupertinoColors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.systemGrey.withOpacity(0.1),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: CupertinoColors.label,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHealthMetricsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Chỉ số sức khỏe',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: CupertinoColors.label,
-          ),
-        ),
-        SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.1,
-          children: [
-            _buildMetricCard(
-              icon: CupertinoIcons.heart_fill,
-              color: CupertinoColors.systemRed,
-              title: 'Huyết áp',
-              value: _latestBP != null ? '${_latestBP.sbp}/${_latestBP.dbp}' : '--/--',
-              unit: 'mmHg',
-              subtitle: _latestBP != null ? _formatDate(_latestBP.date) : 'Chưa có',
-            ),
-            _buildMetricCard(
-              icon: CupertinoIcons.drop_fill,
-              color: CupertinoColors.systemGreen,
-              title: 'Đường huyết',
-              value: _latestBS != null ? _latestBS.glu.toStringAsFixed(1) : '--',
-              unit: 'mmol/L',
-              subtitle: _latestBS != null ? _formatDate(_latestBS.date) : 'Chưa có',
-            ),
-            _buildMetricCard(
-              icon: CupertinoIcons.person_fill,
-              color: CupertinoColors.systemBlue,
-              title: 'BMI',
-              value: _latestBMI != null ? _latestBMI.bmi.toStringAsFixed(1) : '--',
-              unit: '',
-              subtitle: _latestBMI != null ? _formatDate(_latestBMI.date) : 'Chưa có',
-            ),
-            _buildMetricCard(
-              icon: CupertinoIcons.waveform_path_ecg,
-              color: CupertinoColors.systemPink,
-              title: 'Nhịp tim',
-              value: _latestHR != null ? '$_latestHR' : '--',
-              unit: 'bpm',
-              subtitle: _latestHR != null ? 'Đo gần nhất' : 'Chưa có',
-            ),
-            _buildMetricCard(
-              icon: CupertinoIcons.moon_fill,
-              color: CupertinoColors.systemIndigo,
-              title: 'Giấc ngủ',
-              value: _latestSleep != null && _latestSleep > 0 ? _latestSleep.toStringAsFixed(1) : '--',
-              unit: 'giờ',
-              subtitle: _latestSleep != null && _latestSleep > 0 ? 'Ngủ hôm qua' : 'Chưa có',
-            ),
-            _buildMetricCard(
-              icon: CupertinoIcons.flame_fill,
-              color: CupertinoColors.systemOrange,
-              title: 'Bước chân',
-              value: _steps > 0 ? '$_steps' : '--',
-              unit: 'bước',
-              subtitle: _steps > 0 ? 'Hôm nay' : 'Chưa có',
-            ),
-            _buildMetricCard(
-              icon: CupertinoIcons.bell_fill,
-              color: CupertinoColors.systemYellow,
-              title: 'Nhắc thuốc',
-              value: '$_reminderCount',
-              unit: 'lịch',
-              subtitle: 'Đang hoạt động',
-            ),
-            _buildMetricCard(
-              icon: CupertinoIcons.leaf_arrow_circlepath,
-              color: CupertinoColors.systemTeal,
-              title: 'Calories',
-              value: _totalCalories.toInt().toString(),
-              unit: 'kcal',
-              subtitle: 'Hôm nay',
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMetricCard({
-    IconData icon,
-    Color color,
-    String title,
-    String value,
-    String unit,
-    String subtitle,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.08),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: CupertinoColors.secondaryLabel,
-            ),
-          ),
-          SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: CupertinoColors.label,
-                ),
-              ),
-              if (unit.isNotEmpty) ...[
-                SizedBox(width: 2),
-                Padding(
-                  padding: EdgeInsets.only(bottom: 2),
-                  child: Text(
-                    unit,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: CupertinoColors.tertiaryLabel,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 10,
-              color: CupertinoColors.tertiaryLabel,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
   String _formatDate(String dateStr) {
     try {
       DateTime date = DateTime.parse(dateStr);
       return '${date.day}/${date.month}/${date.year}';
-    } catch (e) {
+    } catch (_) {
       return '';
     }
   }
+}
+
+// ── Data model for journal cards ─────────────────────────────────────────────
+class _JournalItem {
+  final String title;
+  final String value;
+  final String unit;
+  final Color valueColor;
+  final Color bgColor;
+  final Color iconColor;
+  final IconData fallbackIcon;
+  final String icon;
+  final VoidCallback onTap;
+
+  _JournalItem({
+    @required this.title,
+    @required this.value,
+    @required this.unit,
+    @required this.valueColor,
+    @required this.bgColor,
+    @required this.iconColor,
+    this.fallbackIcon,
+    this.icon,
+    this.onTap,
+  });
 }

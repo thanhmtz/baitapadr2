@@ -1,6 +1,7 @@
 import 'package:bp_notepad/events/reminderBloc.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bp_notepad/screens/mainScreen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,6 +10,14 @@ import 'package:bp_notepad/localization/appLocalization.dart';
 import 'package:bp_notepad/theme.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+    ),
+  );
   runApp(BpNotepad());
 }
 
@@ -63,30 +72,25 @@ class _BpNotepadState extends State<BpNotepad> {
 
             // 🔥 FIX QUAN TRỌNG: đồng bộ Material + nền
             builder: (context, child) {
-              return Material(
-                color: isDarkMode ? Color(0xFF121212) : Colors.white,
-                child: Theme(
-                  data: ThemeData(
-                    brightness:
-                    isDarkMode ? Brightness.dark : Brightness.light,
-
-                    scaffoldBackgroundColor:
-                    isDarkMode ? Color(0xFF121212) : Colors.white,
-
-                    cardColor:
-                    isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
-
-                    // 🔥 QUAN TRỌNG: KHÔNG sửa trực tiếp theme có sẵn
-                    textTheme: TextTheme(
-                      bodyText1: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black),
-                      bodyText2: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black),
-                      headline6: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black),
+              return AnnotatedRegion<SystemUiOverlayStyle>(
+                value: isDarkMode 
+                    ? SystemUiOverlayStyle.light 
+                    : SystemUiOverlayStyle.dark,
+                child: Material(
+                  color: isDarkMode ? Color(0xFF121212) : Colors.white,
+                  child: Theme(
+                    data: ThemeData(
+                      brightness: isDarkMode ? Brightness.dark : Brightness.light,
+                      scaffoldBackgroundColor: isDarkMode ? Color(0xFF121212) : Colors.white,
+                      cardColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
+                      textTheme: TextTheme(
+                        bodyText1: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                        bodyText2: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                        headline6: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                      ),
                     ),
+                    child: child,
                   ),
-                  child: child,
                 ),
               );
             },
