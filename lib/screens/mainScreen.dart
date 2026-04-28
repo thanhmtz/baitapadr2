@@ -1,10 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:bp_notepad/screens/homeScreen.dart';
-import 'package:bp_notepad/screens/addScreen.dart';
+import 'package:bp_notepad/screens/homeScreen.dart' as home;
 import 'package:bp_notepad/screens/userScreen.dart';
+<<<<<<< HEAD
 import 'package:bp_notepad/screens/trackingScreen.dart';
 import 'package:bp_notepad/theme.dart';
+=======
+import 'package:bp_notepad/screens/lifestyleScreen.dart';
+import 'package:bp_notepad/screens/FunctionScreen/healthTrackingScreen.dart';
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
 
 class MainScreen extends StatefulWidget {
   @override
@@ -14,10 +18,25 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
+<<<<<<< HEAD
   static const Color _primaryGreen = Color(0xFF00BFA5);
 
   void _onTabSelected(int index) {
     setState(() {
+=======
+  final List<Widget> _screens = [
+    home.HomeScreen(),
+    HomeScreen(),
+    UserScreen(),
+    HealthTrackingScreen(),
+  ];
+
+  void _onTabSelected(int index) {
+    setState(() {
+      if (_currentIndex == 0 && index == 0) {
+        _screens[0] = home.HomeScreen();
+      }
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
       _currentIndex = index;
     });
   }
@@ -53,10 +72,17 @@ class _MainScreenState extends State<MainScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
+<<<<<<< HEAD
                 _buildNavItem(0, CupertinoIcons.house_fill, 'Trang chủ'),
                 _buildNavItem(1, CupertinoIcons.plus_circle_fill, 'Thêm'),
                 _buildNavItem(2, CupertinoIcons.person_fill, 'Cá nhân'),
                 _buildNavItem(3, CupertinoIcons.chart_bar_fill, 'Theo dõi'),
+=======
+                _buildNavItem(0, CupertinoIcons.house_fill, 'Home'),
+                _buildNavItem(1, CupertinoIcons.sparkles, 'Lifestyle'),
+                _buildNavItem(2, CupertinoIcons.person_fill, 'User'),
+                _buildNavItem(3, CupertinoIcons.chart_bar_alt_fill, 'Tracking'),
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
               ],
             ),
           ),

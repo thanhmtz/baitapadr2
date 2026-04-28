@@ -1,23 +1,51 @@
 import 'package:flutter/cupertino.dart';
+<<<<<<< HEAD
 import 'package:flutter/material.dart'
     show LinearProgressIndicator, RefreshIndicator, Scaffold, CircularProgressIndicator, Colors;
 import 'package:flutter/material.dart' show required;
 import 'package:bp_notepad/db/nutrition_databaseProvider.dart';
+=======
+import 'package:flutter/material.dart';
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
 import 'package:bp_notepad/db/bp_databaseProvider.dart';
 import 'package:bp_notepad/db/bs_databaseProvider.dart';
 import 'package:bp_notepad/db/body_databaseProvider.dart';
 import 'package:bp_notepad/db/alarm_databaseProvider.dart';
 import 'package:bp_notepad/db/hr_databaseProvider.dart';
 import 'package:bp_notepad/db/sleep_databaseProvider.dart';
+import 'package:bp_notepad/db/nutrition_databaseProvider.dart';
 import 'package:bp_notepad/models/bpDBModel.dart';
 import 'package:bp_notepad/models/bsDBModel.dart';
 import 'package:bp_notepad/models/bodyModel.dart';
 import 'package:bp_notepad/models/hrDBModel.dart';
 import 'package:bp_notepad/models/sleepDBModel.dart';
+<<<<<<< HEAD
 import 'package:bp_notepad/screens/userScreen.dart';
 import 'package:bp_notepad/screens/addScreen.dart';
 import 'package:bp_notepad/theme.dart';
 import 'package:bp_notepad/screens/FunctionScreen/aiDoctorScreen.dart';
+=======
+import 'package:bp_notepad/screens/FunctionScreen/bpScreen.dart';
+import 'package:bp_notepad/screens/FunctionScreen/bsScreen.dart';
+import 'package:bp_notepad/screens/FunctionScreen/bmiScreen.dart';
+import 'package:bp_notepad/screens/FunctionScreen/heartRateScreen.dart';
+import 'package:bp_notepad/screens/FunctionScreen/nutritionScreen.dart';
+import 'package:bp_notepad/screens/FunctionScreen/waterReminderScreen.dart';
+import 'package:bp_notepad/screens/FunctionScreen/healthTrackingScreen.dart';
+
+// ─── Color tokens ─────────────────────────────────────────────────────────────
+const _green       = Color(0xFF3DAA72);
+const _greenLight  = Color(0xFF4EC98A);
+const _greenBg     = Color(0xFFEAF7F0);
+const _redAccent   = Color(0xFFFF6B6B);
+const _blueAccent  = Color(0xFF4A9EFF);
+const _orangeAccent= Color(0xFFFF9F43);
+const _purpleAccent= Color(0xFF9B59B6);
+const _pageBg      = Color(0xFFF4F6F9);
+const _cardBg      = Color(0xFFFFFFFF);
+const _textPrimary = Color(0xFF1A2332);
+const _textSec     = Color(0xFF7A8699);
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -26,6 +54,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isLoading = true;
+<<<<<<< HEAD
   double _totalCalories = 0;
   double _totalProtein = 0;
   double _totalCarbs = 0;
@@ -33,12 +62,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _mealCount = 0;
   int _reminderCount = 0;
   int _steps = 0;
+=======
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
 
   BloodPressureDB _latestBP;
-  BloodSugarDB _latestBS;
-  BodyDB _latestBMI;
-  int _latestHR;
-  double _latestSleep;
+  BloodSugarDB    _latestBS;
+  BodyDB          _latestBMI;
+  int             _latestHR;
+  double          _latestSleep;
 
   // Color
   static const Color _primaryGreen = Color(0xFF00BFA5);
@@ -72,23 +103,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
+    final bpList   = await BpDataBaseProvider.db.getData();
+    final bsList   = await BsDataBaseProvider.db.getData();
+    final bodyList = await BodyDataBaseProvider.db.getData();
+    final hrList   = await HeartRateDataBaseProvider.db.getData();
+    final sleepList= await SleepDataBaseProvider.db.getData();
 
-    var meals = await NutritionDatabaseProvider.getMealsByDate(DateTime.now());
-    var bpList = await BpDataBaseProvider.db.getData();
-    var bsList = await BsDataBaseProvider.db.getData();
-    var bodyList = await BodyDataBaseProvider.db.getData();
-    var alarmList = await AlarmDataBaseProvider.db.getData();
-    var hrList = await HeartRateDataBaseProvider.db.getData();
-    var sleepList = await SleepDataBaseProvider.db.getData();
+    if (bpList.isNotEmpty)   { bpList.sort((a,b)=>DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));     _latestBP    = bpList.first; }
+    if (bsList.isNotEmpty)   { bsList.sort((a,b)=>DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));     _latestBS    = bsList.first; }
+    if (bodyList.isNotEmpty) { bodyList.sort((a,b)=>DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));   _latestBMI   = bodyList.first; }
+    if (hrList.isNotEmpty)   { hrList.sort((a,b)=>DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));     _latestHR    = hrList.first.hr; }
+    if (sleepList.isNotEmpty){ sleepList.sort((a,b)=>DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));  _latestSleep = sleepList.first.sleep; }
 
-    double totalC = 0, totalP = 0, totalCarb = 0, totalF = 0;
-    for (var meal in meals) {
-      totalC += meal.calories;
-      totalP += meal.protein;
-      totalCarb += meal.carbs;
-      totalF += meal.fat;
-    }
+    setState(() => _isLoading = false);
+  }
 
+<<<<<<< HEAD
     BloodPressureDB latestBP;
     if (bpList.isNotEmpty) {
       bpList.sort((a, b) => DateTime.parse(b.date).compareTo(DateTime.parse(a.date)));
@@ -136,12 +166,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _steps = 0;
       _isLoading = false;
     });
+=======
+  String _fmt(String date) {
+    try { final d = DateTime.parse(date); return '${d.day}/${d.month}'; } catch (_) { return date; }
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = isDarkMode;
     return Scaffold(
+<<<<<<< HEAD
       backgroundColor: AppTheme.background(),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(
@@ -173,10 +208,142 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
+=======
+      backgroundColor: _pageBg,
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: _green))
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              color: _green,
+              child: CustomScrollView(
+                physics: AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  _buildSliverHeader(),
+                  SliverToBoxAdapter(child: _buildBanner()),
+                  SliverToBoxAdapter(child: _buildSectionLabel('📓 Nhật ký sức khỏe')),
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    sliver: SliverGrid(
+                      delegate: SliverChildListDelegate([
+                        _buildHealthCard(
+                          title: 'Huyết áp',
+                          value: _latestBP != null ? '${_latestBP.sbp}/${_latestBP!.dbp}' : '--/--',
+                          unit: 'mmHg',
+                          sub: _latestBP != null ? _fmt(_latestBP.date) : 'Chưa có dữ liệu',
+                          accentColor: _redAccent,
+                          bgColor: Color(0xFFFFF0F0),
+                          imagePath: 'assets/images/bp_device.png',
+                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BloodPressure())),
+                        ),
+                        _buildHealthCard(
+                          title: 'Đường huyết',
+                          value: _latestBS != null ? _latestBS!.glu.toStringAsFixed(1) : '--',
+                          unit: 'mmol/L',
+                          sub: _latestBS != null ? _fmt(_latestBS!.date) : 'Chưa có dữ liệu',
+                          accentColor: _redAccent,
+                          bgColor: Color(0xFFFFF5F5),
+                          imagePath: 'assets/images/bs_device.png',
+                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BloodSugar())),
+                        ),
+                        _buildHealthCard(
+                          title: 'Cân nặng & chỉ số BMI',
+                          value: _latestBMI != null ? '${_latestBMI!.weight.toStringAsFixed(1)}' : '--',
+                          unit: 'KG',
+                          sub: _latestBMI != null ? 'BMI: ${_latestBMI!.bmi.toStringAsFixed(1)}' : 'Chưa có dữ liệu',
+                          accentColor: _blueAccent,
+                          bgColor: Color(0xFFF0F5FF),
+                          imagePath: 'assets/images/scale.png',
+                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BmiScreen())),
+                        ),
+                        _buildHealthCard(
+                          title: 'Nhắc nhở uống nước',
+                          value: '600',
+                          unit: '/2000ml',
+                          sub: 'Hôm nay',
+                          accentColor: _orangeAccent,
+                          bgColor: Color(0xFFFFF8EE),
+                          imagePath: 'assets/images/water_bottle.png',
+                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => WaterReminderScreen())),
+                        ),
+                        _buildHealthCard(
+                          title: 'Nhịp tim',
+                          value: _latestHR != null ? '$_latestHR' : '--',
+                          unit: 'bpm',
+                          sub: _latestHR != null ? 'Gần nhất' : 'Chưa có dữ liệu',
+                          accentColor: _redAccent,
+                          bgColor: Color(0xFFFFF0F0),
+                          imagePath: 'assets/images/heart.png',
+                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => HeartRateScreen())),
+                        ),
+                        _buildHealthCard(
+                          title: 'Dinh dưỡng',
+                          value: '--',
+                          unit: 'kcal',
+                          sub: 'Hôm nay',
+                          accentColor: _purpleAccent,
+                          bgColor: Color(0xFFF8F0FF),
+                          imagePath: 'assets/images/nutrition.png',
+                          onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => NutritionScreen())),
+                        ),
+                      ]),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.95,
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(child: SizedBox(height: 90)),
+                ],
+              ),
+            ),
+    );
+  }
+
+  // ─── Sliver header ────────────────────────────────────────────────────────
+  Widget _buildSliverHeader() {
+    return SliverAppBar(
+      pinned: true,
+      elevation: 0,
+      backgroundColor: _cardBg,
+      toolbarHeight: 64,
+      title: Row(
+        children: [
+          Text(
+            'theo dõi',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: _textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          Spacer(),
+          // Weather chip
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: _greenBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _green.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(CupertinoIcons.cloud_fill, size: 14, color: _green),
+                SizedBox(width: 5),
+                Text('26°C', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _green)),
+              ],
+            ),
+          ),
+        ],
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
       ),
     );
   }
 
+<<<<<<< HEAD
   // ── App Bar ──────────────────────────────────────────────────────────────────
   Widget _buildAppBar() {
     return CupertinoSliverNavigationBar(
@@ -211,6 +378,115 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               color: CupertinoColors.white,
               fontSize: 13,
               fontWeight: FontWeight.w600,
+=======
+  // ─── Hero banner ──────────────────────────────────────────────────────────
+  Widget _buildBanner() {
+    return Container(
+      margin: EdgeInsets.fromLTRB(16, 16, 16, 8),
+      height: 130,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF2EAE6E), Color(0xFF4EC98A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: _green.withOpacity(0.30),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Decorative circles
+          Positioned(
+            right: -20, top: -20,
+            child: Container(
+              width: 120, height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 30, bottom: -30,
+            child: Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.06),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(20),
+            child: Row(
+              children: [
+                // Left: heart icon
+                Container(
+                  width: 60, height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(CupertinoIcons.heart_fill, color: Colors.white, size: 32),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Báo cáo cuối cùng: --',
+                        style: TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Kiểm tra ngay!',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+                // Right: CTA button
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => BloodPressure())),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Đo ngay', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _green)),
+                            SizedBox(width: 4),
+                            Icon(CupertinoIcons.arrow_right, size: 13, color: _green),
+                          ],
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.push(context, CupertinoPageRoute(builder: (_) => HealthTrackingScreen())),
+                      child: Text(
+                        'Lịch sử >',
+                        style: TextStyle(fontSize: 12, color: Colors.white, decoration: TextDecoration.underline, decorationColor: Colors.white54),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
             ),
           ),
         ],
@@ -218,6 +494,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+<<<<<<< HEAD
   // ── Hero Banner (green card) ─────────────────────────────────────────────────
   Widget _buildHeroBanner() {
     return Padding(
@@ -352,10 +629,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
+=======
+  // ─── Section label ────────────────────────────────────────────────────────
+  Widget _buildSectionLabel(String text) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 10),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textPrimary, letterSpacing: -0.2),
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
       ),
     );
   }
 
+<<<<<<< HEAD
   // ── Section Header ───────────────────────────────────────────────────────────
   Widget _buildSectionHeader(String title) {
     return Padding(
@@ -476,11 +763,83 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
             const SizedBox(height: 8),
+=======
+  // ─── Health card ──────────────────────────────────────────────────────────
+  Widget _buildHealthCard({
+    @required String title,
+    @required String value,
+    @required String unit,
+    @required String sub,
+    @required Color accentColor,
+    @required Color bgColor,
+    @required String imagePath,
+    @required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Title row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _textPrimary,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                  ),
+                ),
+              ],
+            ),
+
+            // Illustration (try image, fallback to icon)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Image.asset(
+                imagePath,
+                width: 54,
+                height: 54,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(CupertinoIcons.heart_fill, color: accentColor, size: 24),
+                ),
+              ),
+            ),
+
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
             // Value row
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
+<<<<<<< HEAD
                   item.value,
                   style: TextStyle(
                     fontSize: 24,
@@ -586,12 +945,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
                 child: Icon(icon, color: iconColor, size: 26),
               ),
+=======
+                  value,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: accentColor,
+                    height: 1,
+                  ),
+                ),
+                if (unit.isNotEmpty) ...[
+                  SizedBox(width: 2),
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 2),
+                    child: Text(
+                      unit,
+                      style: TextStyle(fontSize: 11, color: _textSec, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+
+            // Sub text
+            Text(
+              sub,
+              style: TextStyle(fontSize: 10.5, color: _textSec),
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
             ),
           ],
         ),
       ),
     );
   }
+<<<<<<< HEAD
 
   void _navigateToAdd(int index) {
     Navigator.push(context, CupertinoPageRoute(builder: (_) => AddScreen()));
@@ -631,3 +1018,6 @@ class _JournalItem {
     this.onTap,
   });
 }
+=======
+}
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1

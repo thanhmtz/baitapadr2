@@ -90,6 +90,30 @@ class BsDataBaseProvider {
       whereArgs: [id],
     );
   }
+
+  Future<List<Map<String, dynamic>>> getDailyData({int days = 30}) async {
+    final db = await database;
+    final now = DateTime.now();
+    final startDate = now.subtract(Duration(days: days));
+    final startDateStr = startDate.toIso8601String().split('T')[0];
+
+    var datas = await db.query(
+      TABLE_NAME,
+      columns: [COLUMN_ID, COLUMN_TIME, COLUMN_GLU],
+      where: "SUBSTR($COLUMN_TIME, 1, 10) >= ?",
+      whereArgs: [startDateStr],
+      orderBy: "$COLUMN_TIME ASC",
+    );
+
+    Map<String, double> dailyData = {};
+    datas.forEach((element) {
+      BloodSugarDB bsDB = BloodSugarDB.fromMap(element);
+      String day = bsDB.date.substring(0, 10);
+      dailyData[day] = bsDB.glu;
+    });
+
+    return dailyData.entries.map((e) => {'date': e.key, 'value': e.value}).toList();
+  }
 }
 
 

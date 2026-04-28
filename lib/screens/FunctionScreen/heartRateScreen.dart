@@ -723,10 +723,10 @@ class _HeartRateScreenState extends State<HeartRateScreen>
   }
 
   bool _isPlacementOkay({
-    double avgRed,
-    double avgGreen,
-    double score,
-    bool previousAligned,
+    double avgRed = 0.0,
+    double avgGreen = 0.0,
+    double score = 0.0,
+    bool previousAligned = false,
   }) {
     final double ratio = avgRed / (avgGreen + 1.0);
     final double threshold = previousAligned
@@ -1459,8 +1459,8 @@ class _FrameAverages {
   final double avgGreen;
 
   const _FrameAverages({
-    @required this.avgRed,
-    @required this.avgGreen,
+    this.avgRed = 0.0,
+    this.avgGreen = 0.0,
   });
 }
 
@@ -1469,8 +1469,8 @@ class _GuidePulsePainter extends CustomPainter {
   final Color color;
 
   const _GuidePulsePainter({
-    @required this.progress,
-    @required this.color,
+    this.progress = 0.0,
+    this.color = const Color(0x00000000),
   });
 
   @override
@@ -1503,9 +1503,9 @@ class _EcgPainter extends CustomPainter {
   final bool isActive;
 
   _EcgPainter({
-    @required this.progress,
-    @required this.signal,
-    @required this.isActive,
+    this.progress = 0.0,
+    this.signal = const <double>[],
+    this.isActive = false,
   });
 
   @override

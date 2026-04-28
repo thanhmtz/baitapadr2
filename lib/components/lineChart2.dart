@@ -186,7 +186,7 @@ class _BSLineChartState extends State<BSLineChart> {
         bottomTitles: SideTitles(
           showTitles: true,
           reservedSize: 22,
-          getTextStyles: (value) => const TextStyle(
+          getTextStyles: (value, text) => const TextStyle(
               color: const Color(0xB3FFFFFF),
               fontWeight: FontWeight.bold,
               fontSize: 12),
@@ -213,7 +213,7 @@ class _BSLineChartState extends State<BSLineChart> {
         ),
         leftTitles: SideTitles(
           showTitles: true,
-          getTextStyles: (value) => const TextStyle(
+          getTextStyles: (value, text) => const TextStyle(
             // color: Color(0xff67727d),
             color: const Color(0xB3FFFFFF),
             fontWeight: FontWeight.bold,
@@ -294,7 +294,7 @@ class _BSLineChartState extends State<BSLineChart> {
         bottomTitles: SideTitles(
           showTitles: true,
           reservedSize: 22,
-          getTextStyles: (value) => const TextStyle(
+          getTextStyles: (value, text) => const TextStyle(
               color: Color(0xff68737d),
               fontWeight: FontWeight.bold,
               fontSize: 16),
@@ -307,7 +307,7 @@ class _BSLineChartState extends State<BSLineChart> {
         ),
         leftTitles: SideTitles(
           showTitles: true,
-          getTextStyles: (value) => const TextStyle(
+          getTextStyles: (value, text) => const TextStyle(
             color: const Color(0xff67727d),
             fontWeight: FontWeight.bold,
             fontSize: 15,

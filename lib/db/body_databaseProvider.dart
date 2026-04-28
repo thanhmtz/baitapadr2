@@ -104,5 +104,29 @@ class BodyDataBaseProvider {
       whereArgs: [id],
     );
   }
+
+  Future<List<Map<String, dynamic>>> getDailyData({int days = 30}) async {
+    final db = await database;
+    final now = DateTime.now();
+    final startDate = now.subtract(Duration(days: days));
+    final startDateStr = startDate.toIso8601String().split('T')[0];
+
+    var datas = await db.query(
+      TABLE_NAME,
+      columns: [COLUMN_ID, COLUMN_TIME, COLUMN_BMI],
+      where: "SUBSTR($COLUMN_TIME, 1, 10) >= ?",
+      whereArgs: [startDateStr],
+      orderBy: "$COLUMN_TIME ASC",
+    );
+
+    Map<String, double> dailyData = {};
+    datas.forEach((element) {
+      BodyDB bodyDB = BodyDB.fromMap(element);
+      String day = bodyDB.date.substring(0, 10);
+      dailyData[day] = bodyDB.bmi;
+    });
+
+    return dailyData.entries.map((e) => {'date': e.key, 'value': e.value}).toList();
+  }
 }
 

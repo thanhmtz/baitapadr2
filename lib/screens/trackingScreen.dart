@@ -1,10 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:bp_notepad/components/lineChart1.dart';
-import 'package:bp_notepad/components/lineChart2.dart';
-import 'package:bp_notepad/components/lineChart3.dart';
-import 'package:bp_notepad/components/lineChart4.dart';
-import 'package:bp_notepad/components/lineChart5.dart';
+import 'package:bp_notepad/components/healthSingleChart.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:bp_notepad/theme.dart';
 
@@ -16,7 +12,7 @@ class TrackingScreen extends StatefulWidget {
 class _TrackingScreenState extends State<TrackingScreen> {
   DateTime _selectedDay = DateTime.now();
   CalendarController _calendarController = CalendarController();
-  int _selectedChart = 0;
+  int _selectedMetric = 0;
 
   @override
   void dispose() {
@@ -31,8 +27,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
       body: CustomScrollView(
         slivers: [
           CupertinoSliverNavigationBar(
+<<<<<<< HEAD
             largeTitle: Text('Theo dõi', style: TextStyle(color: AppTheme.textPrimary())),
             backgroundColor: AppTheme.background(),
+=======
+            largeTitle: Text('Theo dõi sức khỏe'),
+            backgroundColor: CupertinoColors.systemGroupedBackground,
+>>>>>>> c433f0958c7b131a6e19678efbcfbebc3e6d3df1
             border: null,
           ),
           SliverToBoxAdapter(
@@ -42,28 +43,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildCalendar(),
+                  SizedBox(height: 24),
+                  _buildMetricSelector(),
                   SizedBox(height: 20),
-                  _buildChartSelector(),
-                  SizedBox(height: 16),
                   _buildSelectedChart(),
-                  SizedBox(height: 20),
-                  Text(
-                    'Tổng quan',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: CupertinoColors.label,
-                    ),
-                  ),
-                  SizedBox(height: 12),
+                  SizedBox(height: 24),
                 ],
               ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: _buildSummaryCards(),
             ),
           ),
           SliverToBoxAdapter(
@@ -78,11 +64,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
     return Container(
       decoration: BoxDecoration(
         color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 10,
+            color: CupertinoColors.systemGrey.withOpacity(0.08),
+            blurRadius: 20,
             offset: Offset(0, 4),
           ),
         ],
@@ -96,17 +82,23 @@ class _TrackingScreenState extends State<TrackingScreen> {
           CalendarFormat.month: '',
         },
         calendarStyle: CalendarStyle(
-          selectedColor: CupertinoColors.activeGreen,
-          todayColor: CupertinoColors.activeGreen.withOpacity(0.3),
-          markersColor: CupertinoColors.activeGreen,
+          selectedColor: Color(0xFF4ECDC4),
+          todayColor: Color(0xFF4ECDC4).withOpacity(0.2),
+          markersColor: Color(0xFF4ECDC4),
           outsideDaysVisible: false,
         ),
         headerStyle: HeaderStyle(
           centerHeaderTitle: true,
-          formatButtonVisible: true,
-          formatButtonDecoration: BoxDecoration(
-            border: Border.all(color: CupertinoColors.activeGreen),
-            borderRadius: BorderRadius.circular(12),
+          formatButtonVisible: false,
+          leftChevronIcon: Icon(
+            CupertinoIcons.chevron_left,
+            color: Color(0xFF4ECDC4),
+            size: 20,
+          ),
+          rightChevronIcon: Icon(
+            CupertinoIcons.chevron_right,
+            color: Color(0xFF4ECDC4),
+            size: 20,
           ),
         ),
         onDaySelected: (date, events, holidays) {
@@ -118,98 +110,186 @@ class _TrackingScreenState extends State<TrackingScreen> {
     );
   }
 
-  Widget _buildChartSelector() {
-    final charts = [
-      {'icon': CupertinoIcons.heart_fill, 'label': 'Huyết áp', 'color': CupertinoColors.systemRed},
-      {'icon': CupertinoIcons.drop_fill, 'label': 'Đường huyết', 'color': CupertinoColors.systemGreen},
-      {'icon': CupertinoIcons.person_fill, 'label': 'BMI', 'color': CupertinoColors.systemBlue},
-      {'icon': CupertinoIcons.moon_fill, 'label': 'Giấc ngủ', 'color': CupertinoColors.systemIndigo},
-      {'icon': CupertinoIcons.flame_fill, 'label': 'Calories', 'color': CupertinoColors.systemOrange},
-      {'icon': CupertinoIcons.heart, 'label': 'Nhịp tim', 'color': CupertinoColors.systemPink},
+  Widget _buildMetricSelector() {
+    final metrics = [
+      {
+        'icon': CupertinoIcons.heart_fill,
+        'label': 'Nhịp tim',
+        'subLabel': 'Heart Rate',
+        'color': Color(0xFFFF6B6B),
+        'gradient': [Color(0xFFFF6B6B), Color(0xFFFF8E8E)],
+      },
+      {
+        'icon': CupertinoIcons.drop_fill,
+        'label': 'Đường huyết',
+        'subLabel': 'Blood Sugar',
+        'color': Color(0xFF4ECDC4),
+        'gradient': [Color(0xFF4ECDC4), Color(0xFF6EE7DE)],
+      },
+      {
+        'icon': CupertinoIcons.heart_circle_fill,
+        'label': 'Huyết áp',
+        'subLabel': 'Blood Pressure',
+        'color': Color(0xFFFF8E53),
+        'gradient': [Color(0xFFFF8E53), Color(0xFFFFAB76)],
+      },
+      {
+        'icon': CupertinoIcons.person_fill,
+        'label': 'BMI',
+        'subLabel': 'Body Mass Index',
+        'color': Color(0xFF45B7D1),
+        'gradient': [Color(0xFF45B7D1), Color(0xFF7DD3E8)],
+      },
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: List.generate(charts.length, (index) {
-          final chart = charts[index];
-          final isSelected = _selectedChart == index;
-          
-          return GestureDetector(
-            onTap: () => setState(() => _selectedChart = index),
-            child: Container(
-              margin: EdgeInsets.only(right: 10),
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: isSelected 
-                    ? (chart['color'] as Color) 
-                    : CupertinoColors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected 
-                      ? (chart['color'] as Color) 
-                      : CupertinoColors.systemGrey4,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Chọn chỉ số',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: CupertinoColors.label,
+          ),
+        ),
+        SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List.generate(metrics.length, (index) {
+              final metric = metrics[index];
+              final isSelected = _selectedMetric == index;
+              
+              return GestureDetector(
+                onTap: () => setState(() => _selectedMetric = index),
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: 200),
+                  margin: EdgeInsets.only(right: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: isSelected
+                        ? LinearGradient(
+                            colors: metric['gradient'] as List<Color>,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isSelected ? null : CupertinoColors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: isSelected
+                        ? null
+                        : Border.all(color: CupertinoColors.systemGrey5),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: (metric['color'] as Color).withOpacity(0.4),
+                              blurRadius: 12,
+                              offset: Offset(0, 4),
+                            ),
+                          ]
+                        : [
+                            BoxShadow(
+                              color: CupertinoColors.systemGrey.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? CupertinoColors.white.withOpacity(0.2)
+                              : (metric['color'] as Color).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          metric['icon'] as IconData,
+                          size: 18,
+                          color: isSelected
+                              ? CupertinoColors.white
+                              : metric['color'] as Color,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            metric['label'] as String,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? CupertinoColors.white
+                                  : CupertinoColors.label,
+                            ),
+                          ),
+                          if (isSelected)
+                            Text(
+                              metric['subLabel'] as String,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: CupertinoColors.white.withOpacity(0.8),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    chart['icon'] as IconData,
-                    size: 18,
-                    color: isSelected 
-                        ? CupertinoColors.white 
-                        : (chart['color'] as Color),
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    chart['label'] as String,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: isSelected 
-                          ? CupertinoColors.white 
-                          : CupertinoColors.label,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-      ),
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildSelectedChart() {
-    final key = _selectedDay.toIso8601String();
-    switch (_selectedChart) {
-      case 0:
-        return _buildChartCard(Builder(key: ValueKey('bp$key'), builder: (_) => BPLineChart()), 'Huyết áp', CupertinoColors.systemRed);
-      case 1:
-        return _buildChartCard(Builder(key: ValueKey('bs$key'), builder: (_) => BSLineChart()), 'Đường huyết', CupertinoColors.systemGreen);
-      case 2:
-        return _buildChartCard(Builder(key: ValueKey('bmi$key'), builder: (_) => BmiLineChart()), 'BMI', CupertinoColors.systemBlue);
-      case 3:
-        return _buildChartCard(Builder(key: ValueKey('sleep$key'), builder: (_) => SleepLineChart()), 'Giấc ngủ', CupertinoColors.systemIndigo);
-      case 4:
-        return _buildChartCard(_buildCaloriesPlaceholder(), 'Calories', CupertinoColors.systemOrange);
-      case 5:
-        return _buildChartCard(Builder(key: ValueKey('hr$key'), builder: (_) => HRLineChart()), 'Nhịp tim', CupertinoColors.systemPink);
-      default:
-        return _buildChartCard(Builder(key: ValueKey('bp$key'), builder: (_) => BPLineChart()), 'Huyết áp', CupertinoColors.systemRed);
-    }
+    final metricTypes = [
+      HealthMetricType.heartRate,
+      HealthMetricType.bloodSugar,
+      HealthMetricType.bloodPressure,
+      HealthMetricType.bmi,
+    ];
+
+    final colors = [
+      Color(0xFFFF6B6B),
+      Color(0xFF4ECDC4),
+      Color(0xFFFF8E53),
+      Color(0xFF45B7D1),
+    ];
+
+    final titles = ['Nhịp tim', 'Đường huyết', 'Huyết áp', 'BMI'];
+    final icons = [
+      CupertinoIcons.heart_fill,
+      CupertinoIcons.drop_fill,
+      CupertinoIcons.heart_circle_fill,
+      CupertinoIcons.person_fill,
+    ];
+
+    return _buildChartCard(
+      HealthSingleChart(metricType: metricTypes[_selectedMetric]),
+      titles[_selectedMetric],
+      icons[_selectedMetric],
+      colors[_selectedMetric],
+    );
   }
 
-  Widget _buildChartCard(Widget chart, String title, Color color) {
+  Widget _buildChartCard(Widget chart, String title, IconData icon, Color color) {
     return Container(
-      height: 250,
       decoration: BoxDecoration(
         color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 10,
+            color: CupertinoColors.systemGrey.withOpacity(0.08),
+            blurRadius: 20,
             offset: Offset(0, 4),
           ),
         ],
@@ -217,159 +297,91 @@ class _TrackingScreenState extends State<TrackingScreen> {
       child: Column(
         children: [
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(20),
             child: Row(
               children: [
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(CupertinoIcons.chart_bar_alt_fill, color: color, size: 20),
-                ),
-                SizedBox(width: 10),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: CupertinoColors.label,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(child: chart),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCaloriesPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(CupertinoIcons.flame_fill, size: 40, color: CupertinoColors.systemOrange),
-          SizedBox(height: 8),
-          Text('Biểu đồ Calories', style: TextStyle(color: CupertinoColors.systemGrey)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryCards() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildSummaryCard(
-                'Huyết áp',
-                '120/80',
-                'mmHg',
-                CupertinoColors.systemRed,
-                CupertinoIcons.heart_fill,
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: _buildSummaryCard(
-                'Đường huyết',
-                '5.5',
-                'mmol/L',
-                CupertinoColors.systemGreen,
-                CupertinoIcons.drop_fill,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildSummaryCard(
-                'BMI',
-                '22.5',
-                '',
-                CupertinoColors.systemBlue,
-                CupertinoIcons.person_fill,
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: _buildSummaryCard(
-                'Giấc ngủ',
-                '7.5',
-                'giờ',
-                CupertinoColors.systemIndigo,
-                CupertinoIcons.moon_fill,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSummaryCard(String title, String value, String unit, Color color, IconData icon) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.08),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 18),
-              SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: CupertinoColors.secondaryLabel,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: CupertinoColors.label,
-                ),
-              ),
-              if (unit.isNotEmpty) ...[
-                SizedBox(width: 4),
-                Padding(
-                  padding: EdgeInsets.only(bottom: 2),
-                  child: Text(
-                    unit,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: CupertinoColors.secondaryLabel,
+                    gradient: LinearGradient(
+                      colors: [color, color.withOpacity(0.7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, color: CupertinoColors.white, size: 22),
+                ),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: CupertinoColors.label,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        '30 ngày gần nhất',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: CupertinoColors.systemGrey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        CupertinoIcons.chart_bar_fill,
+                        size: 14,
+                        color: color,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Bar Chart',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: color,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            ],
+            ),
           ),
+          Divider(height: 1),
+          SizedBox(height: 8),
+          SizedBox(
+            height: 320,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: chart,
+            ),
+          ),
+          SizedBox(height: 16),
         ],
       ),
     );

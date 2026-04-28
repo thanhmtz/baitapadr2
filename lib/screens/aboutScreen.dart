@@ -55,7 +55,7 @@ class _AboutScreenState extends State<AboutScreen> {
                   CircleAvatar(
                     radius: 30,
                     backgroundImage:
-                    NetworkImage("https://i.imgur.com/BoN9kdC.png"),
+                    AssetImage("assets/images/aboutMe.jpeg"),
                   ),
                   SizedBox(width: 15),
                   Column(

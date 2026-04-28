@@ -120,12 +120,12 @@ class HeartRateService {
     return (currentTimeMs - _timestamps.last) >= 33;
   }
 
-  void addSample(
+void addSample(
       double intensity, {
-        int timestamp,
-        double greenValue,
-        double redValue,
-      }) {
+      int timestamp = 0,
+      double greenValue = 0.0,
+      double redValue = 0.0,
+    }) {
     final int ts = timestamp != null
         ? timestamp
         : DateTime.now().millisecondsSinceEpoch;
